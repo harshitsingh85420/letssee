@@ -2,6 +2,22 @@
 
 A comprehensive short-term trading system for Indian equity markets (NSE/BSE) with a 5-day trading horizon. The system implements advanced technical indicators, machine learning models, and proper backtesting with Indian market-specific considerations.
 
+## 🚀 Quick Start - Run in Google Colab (No Setup Required!)
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/harshitsingh85420/letssee/blob/claude/indian-equity-trading-system-011CUX7MGPY37GwYWmG29cb6/indian_trading_system/Indian_Equity_Trading_System_Colab.ipynb)
+
+**👆 Click above to run the entire system in your browser - no installation needed!**
+
+- ✅ Works on any device (even mobile!)
+- ✅ Free GPU/CPU from Google
+- ✅ Interactive visualizations
+- ✅ Complete examples included
+- ✅ Ready in 5 minutes
+
+See [COLAB_GUIDE.md](COLAB_GUIDE.md) for detailed instructions.
+
+---
+
 ## Features
 
 ### 1. Advanced Technical Analysis
