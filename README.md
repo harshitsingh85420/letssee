@@ -42,20 +42,47 @@ Advanced ML system for 5-trading-session predictions:
 
 ## 🚀 Quick Start
 
-### Run in Google Colab (Easiest)
+### 💻 Local Setup (⭐ Recommended for Production)
+
+**Best for:** Daily automation, reliability, professional development
+
+```bash
+# 1. Clone repository
+git clone https://github.com/harshitsingh85420/letssee.git
+cd letssee
+
+# 2. Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Run the system
+python run_stock_picker.py --mode predict
+```
+
+📚 **[Complete Local Setup Guide](./LOCAL_SETUP_GUIDE.md)** - Full instructions with troubleshooting
+
+**Why Local?**
+- ✅ No session timeouts
+- ✅ Better debugging with VS Code/PyCharm
+- ✅ Easy automation (cron/Task Scheduler)
+- ✅ Full control over dependencies
+- ✅ Faster execution
+- ✅ More reliable for daily trading
+
+### ☁️ Google Colab (Quick Testing Only)
+
+**Best for:** Quick experiments, learning, no local setup
+
 ```
 1. Click the "Open in Colab" badge above
 2. Run cells 1-3 to setup
 3. Start trading analysis!
 ```
 
-### Local Installation
-```bash
-git clone https://github.com/harshitsingh85420/letssee.git
-cd letssee/indian_trading_system
-pip install -r requirements.txt
-python example_usage.py
-```
+⚠️ **Note:** Colab has session timeouts and dependency conflicts. For serious trading systems, use local setup.
 
 ## 📊 Features Comparison
 
