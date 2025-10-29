@@ -1,0 +1,352 @@
+"""
+5-Session Stock Picker - Core Pipeline Module
+
+This module contains all the core functionality from the notebook
+converted into reusable functions for standalone operation.
+"""
+
+import os
+import sys
+import json
+import pickle
+from pathlib import Path
+from datetime import datetime, timedelta
+from typing import List, Dict, Tuple, Optional
+
+import numpy as np
+import pandas as pd
+import yfinance as yf
+import lightgbm as lgb
+import requests
+from bs4 import BeautifulSoup
+
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.metrics import roc_auc_score, accuracy_score
+
+from joblib import Memory, Parallel, delayed
+from tqdm import tqdm
+
+# Optional imports
+try:
+    from imblearn.over_sampling import SMOTE
+    SMOTE_AVAILABLE = True
+except ImportError:
+    SMOTE_AVAILABLE = False
+
+# Import our proven modules
+try:
+    from indian_trading_system.indicators.technical import TechnicalIndicators
+    from indian_trading_system.indicators.volatility import VolatilityEstimators
+    from indian_trading_system.indicators.patterns import CandlestickPatterns
+    from indian_trading_system.models.features import FeatureEngineer
+    MODULES_AVAILABLE = True
+except ImportError:
+    MODULES_AVAILABLE = False
+    print("⚠️ Warning: indian_trading_system modules not available, using fallbacks")
+
+
+class StockPickerConfig:
+    """Configuration for the stock picker system"""
+
+    def __init__(self, base_dir: str = './stock_picker_data'):
+        self.BASE_DIR = base_dir
+        self.DATA_DIR = os.path.join(base_dir, 'data')
+        self.STOCK_HISTORIES_DIR = os.path.join(base_dir, 'data', 'stock_histories')
+        self.MODELS_DIR = os.path.join(base_dir, 'models')
+        self.CACHE_DIR = os.path.join(base_dir, 'cache')
+        self.RESULTS_DIR = os.path.join(base_dir, 'results')
+
+        # Prediction parameters
+        self.TARGET_GAIN = 1.5  # Minimum gain % over 5 sessions
+        self.HOLDING_PERIOD = 5  # Trading sessions
+        self.TARGET_PICKS = 15
+        self.INITIAL_THRESHOLD = 0.62
+        self.MIN_THRESHOLD = 0.52
+        self.THRESHOLD_STEP = 0.02
+
+        # Risk filters
+        self.MIN_LIQUIDITY = 2000000  # ₹20 lakh
+        self.MIN_PRICE = 10
+        self.MAX_PRICE = 50000
+
+        # Data parameters
+        self.LOOKBACK_DAYS = 730  # 2 years
+        self.MIN_DATA_POINTS = 200
+
+        # Model parameters
+        self.RANDOM_STATE = 42
+        self.N_CV_SPLITS = 5
+
+        # Create directories
+        for dir_path in [self.BASE_DIR, self.DATA_DIR, self.STOCK_HISTORIES_DIR,
+                         self.MODELS_DIR, self.CACHE_DIR, self.RESULTS_DIR]:
+            Path(dir_path).mkdir(parents=True, exist_ok=True)
+
+
+def log(message: str, level: str = 'INFO'):
+    """Simple logging function"""
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"[{timestamp}] {level}: {message}")
+
+
+class DataLoader:
+    """Download and cache stock data"""
+
+    def __init__(self, config: StockPickerConfig):
+        self.config = config
+        self.memory = Memory(config.CACHE_DIR, verbose=0)
+
+    def download_stock(self, symbol: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
+        """Download single stock data"""
+        try:
+            ticker = yf.Ticker(symbol)
+            df = ticker.history(start=start_date, end=end_date, auto_adjust=True)
+
+            if df.empty or len(df) < self.config.MIN_DATA_POINTS:
+                return None
+
+            df.columns = [col.lower() for col in df.columns]
+            df = df.reset_index()
+            df['date'] = pd.to_datetime(df['date'])
+            df = df[['date', 'open', 'high', 'low', 'close', 'volume']]
+            df = df.dropna()
+
+            return df
+        except Exception as e:
+            log(f"Error downloading {symbol}: {str(e)}", 'ERROR')
+            return None
+
+    def download_multiple(self, symbols: List[str], start_date: str, end_date: str) -> Dict[str, pd.DataFrame]:
+        """Download multiple stocks in parallel"""
+        log(f"Downloading {len(symbols)} stocks...")
+
+        results = Parallel(n_jobs=4)(
+            delayed(self.download_stock)(symbol, start_date, end_date)
+            for symbol in tqdm(symbols, desc="Downloading")
+        )
+
+        stock_data = {
+            symbol: df
+            for symbol, df in zip(symbols, results)
+            if df is not None
+        }
+
+        log(f"Downloaded {len(stock_data)}/{len(symbols)} stocks")
+        return stock_data
+
+
+class RiskFilters:
+    """Apply risk filters to stock universe"""
+
+    @staticmethod
+    def fetch_fno_ban_list() -> List[str]:
+        """Fetch F&O ban list"""
+        try:
+            url = "https://nsearchives.nseindia.com/content/fo/fo_secban.csv"
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(url, headers=headers, timeout=10)
+
+            if response.status_code == 200:
+                from io import StringIO
+                df = pd.read_csv(StringIO(response.text))
+                banned = df.iloc[:, 0].tolist() if not df.empty else []
+                log(f"F&O ban list: {len(banned)} stocks")
+                return [f"{s}.NS" for s in banned]
+        except Exception as e:
+            log(f"Error fetching F&O ban: {e}", 'WARNING')
+        return []
+
+    @staticmethod
+    def apply_liquidity_filter(stock_data: Dict, min_turnover: float, lookback: int = 20):
+        """Filter by minimum liquidity"""
+        filtered = {}
+        for symbol, df in stock_data.items():
+            if len(df) < lookback:
+                continue
+            recent = df.tail(lookback).copy()
+            recent['turnover'] = recent['close'] * recent['volume']
+            if recent['turnover'].mean() >= min_turnover:
+                filtered[symbol] = df
+        log(f"Liquidity filter: {len(filtered)}/{len(stock_data)} passed")
+        return filtered
+
+    @staticmethod
+    def apply_price_filter(stock_data: Dict, min_price: float, max_price: float):
+        """Filter by price range"""
+        filtered = {}
+        for symbol, df in stock_data.items():
+            price = df['close'].iloc[-1]
+            if min_price <= price <= max_price:
+                filtered[symbol] = df
+        log(f"Price filter: {len(filtered)}/{len(stock_data)} passed")
+        return filtered
+
+    @classmethod
+    def apply_all(cls, stock_data: Dict, config: StockPickerConfig):
+        """Apply all filters"""
+        log("Applying risk filters...")
+
+        # F&O ban
+        banned = cls.fetch_fno_ban_list()
+        if banned:
+            stock_data = {s: df for s, df in stock_data.items() if s not in banned}
+            log(f"Excluded {len(banned)} banned stocks")
+
+        # Liquidity
+        stock_data = cls.apply_liquidity_filter(stock_data, config.MIN_LIQUIDITY)
+
+        # Price range
+        stock_data = cls.apply_price_filter(stock_data, config.MIN_PRICE, config.MAX_PRICE)
+
+        log(f"Final universe: {len(stock_data)} stocks")
+        return stock_data
+
+
+class FeatureComputer:
+    """Compute features for stocks"""
+
+    def __init__(self):
+        if MODULES_AVAILABLE:
+            self.technical = TechnicalIndicators()
+            self.volatility = VolatilityEstimators()
+            self.patterns = CandlestickPatterns()
+            self.engineer = FeatureEngineer()
+
+    def compute_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Compute all features"""
+        if MODULES_AVAILABLE:
+            df = self.technical.calculate_all(df)
+            df = self.volatility.calculate_all(df)
+            df = self.patterns.detect_all_patterns(df)
+            df = self.patterns.calculate_pattern_strength(df)
+            df = self.engineer.create_all_features(df)
+        else:
+            # Basic fallback features
+            df = self._compute_basic_features(df)
+
+        # 5-session specific features
+        df = self._add_5session_features(df)
+        return df
+
+    def _compute_basic_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Basic features using pandas"""
+        # Returns
+        for period in [1, 3, 5, 10]:
+            df[f'return_{period}d'] = df['close'].pct_change(period) * 100
+
+        # Moving averages
+        for period in [5, 10, 20]:
+            df[f'sma_{period}'] = df['close'].rolling(period).mean()
+            df[f'ema_{period}'] = df['close'].ewm(span=period).mean()
+
+        # Volatility
+        df['volatility_5d'] = df['return_1d'].rolling(5).std()
+        df['volatility_10d'] = df['return_1d'].rolling(10).std()
+
+        # Volume
+        df['volume_ratio_5d'] = df['volume'] / df['volume'].rolling(5).mean()
+        df['volume_ratio_20d'] = df['volume'] / df['volume'].rolling(20).mean()
+
+        return df
+
+    def _add_5session_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add 5-session specific features"""
+        df['return_5d'] = df['close'].pct_change(5) * 100
+        df['high_5d'] = df['high'].rolling(5).max()
+        df['low_5d'] = df['low'].rolling(5).min()
+        df['range_5d'] = (df['high_5d'] - df['low_5d']) / df['close'] * 100
+        df['volume_5d_avg'] = df['volume'].rolling(5).mean()
+        df['volume_ratio_5d'] = df['volume'] / df['volume_5d_avg']
+        df['volatility_5d'] = df['return_1d'].rolling(5).std() if 'return_1d' in df.columns else 0
+        return df
+
+
+def generate_labels(df: pd.DataFrame, holding_period: int, target_gain: float) -> pd.DataFrame:
+    """Generate binary labels"""
+    df['forward_return'] = (df['close'].shift(-holding_period) / df['close'] - 1) * 100
+    df['target'] = (df['forward_return'] >= target_gain).astype(int)
+    df = df[:-holding_period].copy()
+    df = df.dropna(subset=['forward_return', 'target'])
+    return df
+
+
+class LightGBMPredictor:
+    """LightGBM model with proper feature tracking"""
+
+    def __init__(self, config: StockPickerConfig):
+        self.config = config
+        self.params = {
+            'objective': 'binary',
+            'metric': 'auc',
+            'boosting_type': 'gbdt',
+            'num_leaves': 31,
+            'learning_rate': 0.05,
+            'feature_fraction': 0.8,
+            'bagging_fraction': 0.8,
+            'bagging_freq': 5,
+            'max_depth': 6,
+            'random_state': config.RANDOM_STATE,
+            'n_jobs': -1,
+            'verbose': -1
+        }
+        self.model = None
+        self.feature_names = None
+
+    def train(self, X: pd.DataFrame, y: pd.Series, feature_names: List[str]):
+        """Train model and store feature names"""
+        log("Training LightGBM model...")
+        self.feature_names = feature_names
+
+        train_data = lgb.Dataset(X, label=y, feature_name=feature_names)
+        self.model = lgb.train(
+            self.params,
+            train_data,
+            num_boost_round=500,
+            callbacks=[lgb.early_stopping(stopping_rounds=50, verbose=False)]
+        )
+        log(f"Model trained! Features: {len(self.feature_names)}")
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        """Predict with proper feature handling"""
+        if self.feature_names is None:
+            raise ValueError("Model not trained!")
+
+        # Add missing features
+        for feat in self.feature_names:
+            if feat not in X.columns:
+                X[feat] = 0
+
+        # Select in correct order
+        X_ordered = X[self.feature_names].fillna(0)
+        return self.model.predict(X_ordered)
+
+    def save(self, path: str):
+        """Save model and features"""
+        self.model.save_model(path)
+        with open(path.replace('.txt', '_features.json'), 'w') as f:
+            json.dump(self.feature_names, f)
+        log(f"Model saved: {path}")
+
+    def load(self, path: str):
+        """Load model and features"""
+        self.model = lgb.Booster(model_file=path)
+        with open(path.replace('.txt', '_features.json'), 'r') as f:
+            self.feature_names = json.load(f)
+        log(f"Model loaded: {path}")
+
+
+def build_stock_universe() -> List[str]:
+    """Build NSE stock universe"""
+    log("Building stock universe...")
+
+    # Top NSE stocks (fallback list)
+    symbols = [
+        'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'HINDUNILVR', 'ICICIBANK', 'SBIN',
+        'BHARTIARTL', 'ITC', 'KOTAKBANK', 'LT', 'AXISBANK', 'ASIANPAINT', 'MARUTI',
+        'BAJFINANCE', 'HCLTECH', 'WIPRO', 'ULTRACEMCO', 'TITAN', 'SUNPHARMA',
+        # Add more as needed...
+    ]
+
+    symbols = [f"{s}.NS" for s in symbols]
+    log(f"Universe: {len(symbols)} stocks")
+    return symbols
