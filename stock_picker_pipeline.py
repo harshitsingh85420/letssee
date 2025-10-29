@@ -335,18 +335,108 @@ class LightGBMPredictor:
         log(f"Model loaded: {path}")
 
 
-def build_stock_universe() -> List[str]:
-    """Build NSE stock universe"""
-    log("Building stock universe...")
+def build_stock_universe(max_stocks: int = None) -> List[str]:
+    """
+    Build comprehensive NSE stock universe
 
-    # Top NSE stocks (fallback list)
-    symbols = [
+    Args:
+        max_stocks: Limit number of stocks (None = all stocks)
+
+    Returns:
+        List of stock symbols with .NS suffix
+    """
+    log("Building comprehensive NSE stock universe...")
+
+    all_symbols = set()
+
+    # Method 1: Fetch from NSE indices
+    indices = [
+        'NIFTY 50', 'NIFTY NEXT 50', 'NIFTY 100', 'NIFTY 200',
+        'NIFTY 500', 'NIFTY MIDCAP 50', 'NIFTY MIDCAP 100', 'NIFTY MIDCAP 150',
+        'NIFTY SMALLCAP 50', 'NIFTY SMALLCAP 100', 'NIFTY SMALLCAP 250',
+        'NIFTY MICROCAP 250'
+    ]
+
+    for index in indices:
+        try:
+            # Try to fetch from NSE (may not work due to restrictions)
+            url = f"https://www.nseindia.com/api/equity-stockIndices?index={index.replace(' ', '%20')}"
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'application/json',
+                'Accept-Language': 'en-US,en;q=0.9',
+            }
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                for stock in data.get('data', []):
+                    symbol = stock.get('symbol', '').strip()
+                    if symbol and symbol not in ['NIFTY', 'BANKNIFTY']:
+                        all_symbols.add(symbol)
+                log(f"✅ Fetched {len(data.get('data', []))} from {index}")
+        except Exception as e:
+            log(f"⚠️ Could not fetch {index}: {str(e)}", 'WARNING')
+
+    # Method 2: Add comprehensive fallback list (Top 500+ stocks)
+    # This ensures we have good coverage even if API fails
+    fallback_symbols = [
+        # Nifty 50
         'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'HINDUNILVR', 'ICICIBANK', 'SBIN',
         'BHARTIARTL', 'ITC', 'KOTAKBANK', 'LT', 'AXISBANK', 'ASIANPAINT', 'MARUTI',
         'BAJFINANCE', 'HCLTECH', 'WIPRO', 'ULTRACEMCO', 'TITAN', 'SUNPHARMA',
-        # Add more as needed...
+        'NESTLEIND', 'ONGC', 'TATAMOTORS', 'NTPC', 'POWERGRID', 'M&M', 'TECHM',
+        'ADANIPORTS', 'COALINDIA', 'BAJAJFINSV', 'DRREDDY', 'INDUSINDBK', 'DIVISLAB',
+        'SHREECEM', 'CIPLA', 'EICHERMOT', 'BRITANNIA', 'GRASIM', 'BPCL', 'HINDALCO',
+        'TATASTEEL', 'APOLLOHOSP', 'UPL', 'TATACONSUM', 'HEROMOTOCO', 'JSWSTEEL',
+        'BAJAJ-AUTO', 'SBILIFE', 'HDFCLIFE', 'ADANIENT',
+
+        # Nifty Next 50
+        'ADANIGREEN', 'ADANIPORTS', 'AMBUJACEM', 'APOLLOTYRE', 'ASHOKLEY', 'AUROPHARMA',
+        'BANDHANBNK', 'BERGEPAINT', 'BEL', 'BOSCHLTD', 'COLPAL', 'CONCOR', 'COFORGE',
+        'DABUR', 'DLF', 'DMART', 'GAIL', 'GODREJCP', 'HAVELLS', 'ICICIGI', 'ICICIPRULI',
+        'IDEA', 'INDIGO', 'IOC', 'IRCTC', 'JINDALSTEL', 'LICHSGFIN', 'LUPIN', 'MARICO',
+        'MCDOWELL-N', 'MUTHOOTFIN', 'NMDC', 'NYKAA', 'OFSS', 'PAGEIND', 'PETRONET',
+        'PIDILITIND', 'PNB', 'RECLTD', 'SBICARD', 'SHRIRAMFIN', 'SIEMENS', 'TATAPOWER',
+        'TORNTPHARM', 'TRENT', 'VEDL', 'ZOMATO', 'ZYDUSLIFE',
+
+        # Mid Cap 100 (sample)
+        'ABCAPITAL', 'ABFRL', 'ACC', 'ALKEM', 'ARE&M', 'ASTRAL', 'ATGL', 'AUROPHARMA',
+        'BALKRISIND', 'BATAINDIA', 'BHARATFORG', 'BHEL', 'BIOCON', 'CANBK', 'CANFINHOME',
+        'CHAMBLFERT', 'CHOLAFIN', 'CUMMINSIND', 'DEEPAKNTR', 'ESCORTS', 'EXIDEIND',
+        'FEDERALBNK', 'GLENMARK', 'GMRINFRA', 'GODREJPROP', 'GSPL', 'HDFCAMC',
+        'HINDPETRO', 'HONAUT', 'IDFCFIRSTB', 'INDUSTOWER', 'INTELLECT', 'IRFC',
+        'JUBLFOOD', 'L&TFH', 'LALPATHLAB', 'LAURUSLABS', 'LTTS', 'MANAPPURAM',
+        'MFSL', 'MGL', 'MOTHERSON', 'MPHASIS', 'MRF', 'NAM-INDIA', 'NATIONALUM',
+        'NAUKRI', 'NAVINFLUOR', 'OBEROIRLTY', 'PERSISTENT', 'POLYCAB', 'PVRINOX',
+        'RBLBANK', 'SAIL', 'SRTRANSFIN', 'SUPREMEIND', 'SYNGENE', 'TATACHEM',
+        'TATACOMM', 'TATAELXSI', 'TIINDIA', 'TORNTPOWER', 'TVSMOTOR', 'UBL',
+        'UNIONBANK', 'UPL', 'VOLTAS', 'WHIRLPOOL', 'YESBANK',
+
+        # Small Cap (sample - add more for full coverage)
+        'AARTIIND', 'AJANTPHARM', 'APLLTD', 'ASHOKLEY', 'ASTRAZEN', 'BAYERCROP',
+        'BRIGADE', 'CGPOWER', 'COROMANDEL', 'CROMPTON', 'CUMMINSIND', 'DELTACORP',
+        'DIXON', 'EMAMILTD', 'ENDURANCE', 'FORTIS', 'GILLETTE', 'GLAND', 'GRAPHITE',
+        'GUJGASLTD', 'HFCL', 'HINDCOPPER', 'HINDZINC', 'HUDCO', 'IIFL', 'INDHOTEL',
+        'INDIACEM', 'INDIGOPNTS', 'JKCEMENT', 'JKTYRE', 'JUBLPHARMA', 'JUSTDIAL',
+        'KANSAINER', 'KEI', 'KPITTECH', 'LODHA', 'M&MFIN', 'MASTEK', 'MAXHEALTH',
+        'MCX', 'METROPOLIS', 'MOTILALOFS', 'NATCOPHARM', 'NLCINDIA', 'PAYTM',
+        'PGHH', 'PHOENIXLTD', 'POLYMED', 'PVR', 'RAJESHEXPO', 'RAMCOCEM',
+        'RITES', 'ROUTE', 'SKFINDIA', 'SONACOMS', 'STAR', 'SUNDARMFIN',
+        'SUNDRMFAST', 'SUPREMEPET', 'SWANENERGY', 'SYMPHONY', 'TATAINVEST',
+        'THERMAX', 'TIMKEN', 'TRITURBINE', 'TTML', 'TV18BRDCST', 'UCOBANK',
+        'UJJIVAN', 'ULTRACEMCO', 'VGUARD', 'VBL', 'VINATIORGA', 'VSTIND',
+        'WELCORP', 'WELSPUNIND', 'WESTLIFE', 'ZEEL', 'ZENSARTECH'
     ]
 
-    symbols = [f"{s}.NS" for s in symbols]
-    log(f"Universe: {len(symbols)} stocks")
+    all_symbols.update(fallback_symbols)
+
+    # Convert to list with .NS suffix
+    symbols = sorted([f"{s}.NS" for s in all_symbols])
+
+    # Apply limit if specified
+    if max_stocks and len(symbols) > max_stocks:
+        symbols = symbols[:max_stocks]
+        log(f"Limited to {max_stocks} stocks")
+
+    log(f"✅ Built universe: {len(symbols)} stocks")
     return symbols

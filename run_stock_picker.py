@@ -44,8 +44,8 @@ def train_model(config: StockPickerConfig, n_stocks: int = 100):
     log("="*70)
 
     # Step 1: Build stock universe
-    universe = build_stock_universe()[:n_stocks]  # Limit for training
-    log(f"Training on {len(universe)} stocks")
+    universe = build_stock_universe(max_stocks=n_stocks)  # Limit for training
+    log(f"Training on up to {len(universe)} stocks")
 
     # Step 2: Download data
     loader = DataLoader(config)
@@ -115,9 +115,9 @@ def train_model(config: StockPickerConfig, n_stocks: int = 100):
 
 
 def generate_predictions(config: StockPickerConfig, predictor: LightGBMPredictor = None):
-    """Generate daily predictions"""
+    """Generate daily predictions - scans ALL stocks"""
     log("="*70)
-    log("🔮 GENERATING DAILY PREDICTIONS")
+    log("🔮 GENERATING DAILY PREDICTIONS - SCANNING ALL STOCKS")
     log("="*70)
 
     # Load model if not provided
@@ -130,9 +130,9 @@ def generate_predictions(config: StockPickerConfig, predictor: LightGBMPredictor
         predictor = LightGBMPredictor(config)
         predictor.load(model_path)
 
-    # Step 1: Build universe
-    universe = build_stock_universe()
-    log(f"Analyzing {len(universe)} stocks")
+    # Step 1: Build FULL universe (ALL stocks)
+    universe = build_stock_universe(max_stocks=None)  # No limit - scan ALL
+    log(f"🎯 Scanning {len(universe)} stocks to find the BEST picks")
 
     # Step 2: Download latest data
     loader = DataLoader(config)
@@ -214,13 +214,15 @@ def generate_predictions(config: StockPickerConfig, predictor: LightGBMPredictor
 
 
 def main():
-    parser = argparse.ArgumentParser(description='5-Session Stock Picker')
+    parser = argparse.ArgumentParser(description='5-Session Stock Picker - Scan ALL stocks')
     parser.add_argument('--mode', choices=['train', 'predict', 'both'], default='predict',
                        help='Mode: train new model, predict with existing, or both')
     parser.add_argument('--stocks', type=int, default=100,
-                       help='Number of stocks for training (default: 100)')
+                       help='Number of stocks for training (default: 100, use 500+ for best model)')
     parser.add_argument('--data-dir', type=str, default='./stock_picker_data',
                        help='Directory for data and models')
+    parser.add_argument('--scan-limit', type=int, default=None,
+                       help='Limit number of stocks to scan during prediction (default: ALL stocks)')
     args = parser.parse_args()
 
     print("="*70)
