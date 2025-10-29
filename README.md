@@ -2,7 +2,12 @@
 
 **Production-grade machine learning trading systems for Indian stock markets (NSE/BSE)**
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/harshitsingh85420/letssee/blob/claude/indian-equity-trading-system-011CUX7MGPY37GwYWmG29cb6/indian_trading_system/Indian_Equity_Trading_System_Colab.ipynb)
+## 🚀 Quick Launch
+
+| System | Open in Colab |
+|--------|---------------|
+| **Indian Trading System** | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/harshitsingh85420/letssee/blob/claude/indian-equity-trading-system-011CUX7MGPY37GwYWmG29cb6/indian_trading_system/Indian_Equity_Trading_System_Colab.ipynb) |
+| **5-Session Stock Picker** | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/harshitsingh85420/letssee/blob/claude/indian-equity-trading-system-011CUX7MGPY37GwYWmG29cb6/5Session_Stock_Picker_Production.ipynb) |
 
 ## 🎯 Projects
 
@@ -21,6 +26,8 @@ Comprehensive short-term trading system with:
 
 ### 2. 5-Session Stock Picker (Production)
 **Location:** `5Session_Stock_Picker_Production.ipynb`
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/harshitsingh85420/letssee/blob/claude/indian-equity-trading-system-011CUX7MGPY37GwYWmG29cb6/5Session_Stock_Picker_Production.ipynb)
 
 Advanced ML system for 5-trading-session predictions:
 - 🎯 Processes **3000+ NSE/BSE stocks** daily
