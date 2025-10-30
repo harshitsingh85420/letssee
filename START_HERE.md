@@ -2,6 +2,18 @@
 
 **Follow these exact steps. Copy-paste commands. Takes 5 minutes.**
 
+## 🧠 How This System Works
+
+The stock picker uses **machine learning** to learn from historical patterns:
+
+1. 📊 **Trains on 2 years of data** (up to TODAY) - learns which indicator patterns preceded 5-session gains
+2. 🔮 **Predicts from today's indicators** - finds stocks matching past winners
+3. 🔄 **Retrains daily** with latest data - model adapts and self-corrects
+
+**💡 Recommended: Use `--mode daily` to retrain + predict every day!**
+
+**See [DAILY_RETRAINING.md](DAILY_RETRAINING.md) for full explanation.**
+
 ---
 
 ## ✅ Step 1: Pull Latest Code
@@ -176,24 +188,44 @@ You now have:
 
 ---
 
-## 📅 Daily Use (Every Morning)
+## 📅 Daily Use (Recommended)
+
+**🔥 Option 1: Daily Retraining (Best Results)**
+
+```cmd
+cd path\to\letssee
+python run_stock_picker.py --mode daily --stocks 100
+```
+
+- Retrains model with today's data
+- Model learns latest patterns and self-corrects
+- Takes 5-10 min first run, 2-3 min cached
+- **Recommended for best accuracy!**
+
+**⚡ Option 2: Quick Prediction (Faster)**
 
 ```cmd
 cd path\to\letssee
 python run_stock_picker.py --mode predict
 ```
 
-**Replace `path\to\letssee` with your actual project path**
+- Uses yesterday's saved model
+- Takes 1-2 minutes
+- Good for quick checks, but model doesn't adapt
 
-Takes 1-2 minutes after first run (cached).
+**💡 See [DAILY_RETRAINING.md](DAILY_RETRAINING.md) to understand why daily retraining gives better results!**
+
+**Replace `path\to\letssee` with your actual project path**
 
 ---
 
-## 🔄 Retrain Model (Weekly)
+## 🔄 Weekly Deep Retraining (Optional)
 
 ```cmd
-python run_stock_picker.py --mode train --stocks 100
+python run_stock_picker.py --mode train --stocks 500
 ```
+
+Train on more stocks (500 vs 100) for more comprehensive model. Do this monthly.
 
 ---
 

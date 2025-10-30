@@ -2,6 +2,20 @@
 
 **Your system is now fully functional!** This guide shows you how to use it.
 
+## 🧠 Understanding the System
+
+This is a **self-learning stock picker** that:
+
+1. 📊 **Learns from history** - Trains on 2 years of data, learns which patterns preceded 5-session gains
+2. 🔮 **Predicts today** - Finds stocks matching winning patterns
+3. 🔄 **Adapts daily** - Retrains with latest data, self-corrects over time
+
+**Key Insight:** Model learns "When indicators looked like X, Y, Z... stock gained 1.5%+ in next 5 sessions"
+
+**💡 Recommended: Use `--mode daily` to retrain every day for best results!**
+
+**Full explanation: [DAILY_RETRAINING.md](DAILY_RETRAINING.md)**
+
 ---
 
 ## ✅ What You Have Now
@@ -18,15 +32,21 @@ You have **TWO ways** to run the system:
 ### **Quick Test (Start Here)**
 
 ```cmd
-REM Train a small model first (uses 20 stocks, takes 2-3 minutes)
-python run_stock_picker.py --mode train --stocks 20
+REM Option 1: Daily Mode (Recommended) - Retrain + Predict
+python run_stock_picker.py --mode daily --stocks 20
 
-REM Generate predictions
+REM Option 2: Train once, then predict
+python run_stock_picker.py --mode train --stocks 20
 python run_stock_picker.py --mode predict
 
-REM Or do both
+REM Option 3: Same as daily mode (alias)
 python run_stock_picker.py --mode both --stocks 20
 ```
+
+**What's the difference?**
+- `--mode daily` or `--mode both` = Retrains model with today's data, then predicts
+- `--mode train` = Just train and save model
+- `--mode predict` = Use saved model to predict (doesn't retrain)
 
 ### **Production Usage**
 

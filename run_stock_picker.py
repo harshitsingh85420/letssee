@@ -299,9 +299,17 @@ def generate_predictions(config: StockPickerConfig, predictor: LightGBMPredictor
 
 
 def main():
-    parser = argparse.ArgumentParser(description='5-Session Stock Picker - Scan ALL stocks')
-    parser.add_argument('--mode', choices=['train', 'predict', 'both'], default='predict',
-                       help='Mode: train new model, predict with existing, or both')
+    parser = argparse.ArgumentParser(
+        description='5-Session Stock Picker - Daily Retraining System\n\n'
+                    'HOW IT WORKS:\n'
+                    '1. Model trains on historical data up to TODAY\n'
+                    '2. Learns which patterns preceded 5-session gains in the PAST\n'
+                    '3. Predicts which stocks TODAY show similar patterns\n'
+                    '4. Retrains daily/weekly with latest data for continuous learning\n',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument('--mode', choices=['train', 'predict', 'both', 'daily'], default='predict',
+                       help='Mode: train=train only, predict=use saved model, both/daily=retrain+predict (recommended for daily use)')
     parser.add_argument('--stocks', type=int, default=100,
                        help='Number of stocks for training (default: 100, use 500+ for best model)')
     parser.add_argument('--data-dir', type=str, default='./stock_picker_data',
@@ -310,12 +318,27 @@ def main():
                        help='Limit number of stocks to scan during prediction (default: ALL stocks)')
     args = parser.parse_args()
 
+    # 'daily' is an alias for 'both'
+    if args.mode == 'daily':
+        args.mode = 'both'
+
     print("="*70)
-    print("🎯 5-SESSION STOCK PICKER - PRODUCTION SYSTEM")
+    print("🎯 5-SESSION STOCK PICKER - DAILY RETRAINING SYSTEM")
     print("="*70)
-    print(f"\nMode: {args.mode}")
-    print(f"Data directory: {args.data_dir}")
-    print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"\n📅 Today's Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"🔧 Mode: {args.mode}")
+    print(f"📁 Data directory: {args.data_dir}")
+
+    if args.mode == 'both':
+        print("\n" + "="*70)
+        print("🧠 DAILY RETRAINING MODE - How It Works:")
+        print("="*70)
+        print("1. 📊 Trains on historical data up to TODAY")
+        print("2. 🎓 Learns: Which patterns preceded 5-session gains in the PAST")
+        print("3. 🔮 Predicts: Which stocks TODAY show similar winning patterns")
+        print("4. 🔄 Next run: Model updates with one more day of data")
+        print("\n💡 This ensures your model adapts to current market conditions!")
+
     print()
 
     # Initialize config
