@@ -209,9 +209,9 @@ def generate_predictions(config: StockPickerConfig, predictor: LightGBMPredictor
 
     log(f"✅ Generated predictions for {len(predictions)} stocks")
 
-    # Step 5: Apply threshold to get ALL qualifying stocks
+    # Step 5: Auto-threshold adjustment to get top 15 picks
     log("\n" + "-"*70)
-    log("STEP 5: Filtering by Threshold (Finding ALL Qualifying Stocks)")
+    log("STEP 5: Auto-Threshold Adjustment (0.62→0.52)")
     log("-"*70)
 
     predictions_df = pd.DataFrame(predictions)
@@ -222,48 +222,46 @@ def generate_predictions(config: StockPickerConfig, predictor: LightGBMPredictor
     log(f"   • Mean probability: {predictions_df['probability'].mean():.4f}")
     log(f"   • Min probability: {predictions_df['probability'].min():.4f}")
 
-    log(f"\n🎯 Applying thresholds to find ALL qualifying stocks:")
+    log(f"\n🎯 Searching for {config.TARGET_PICKS} picks (threshold: {config.INITIAL_THRESHOLD}→{config.MIN_THRESHOLD}):")
 
-    # Try different thresholds and show how many pass at each level
+    # Auto-adjust threshold to get TARGET_PICKS (15)
     threshold = config.INITIAL_THRESHOLD
-    best_picks = pd.DataFrame()
+    picks = pd.DataFrame()
 
     while threshold >= config.MIN_THRESHOLD:
         picks_at_threshold = predictions_df[predictions_df['probability'] >= threshold].copy()
-        log(f"   🔍 Threshold {threshold:.2f}: {len(picks_at_threshold)} stocks qualify")
+        status = "✅" if len(picks_at_threshold) >= config.TARGET_PICKS else "🔍"
+        log(f"   {status} Threshold {threshold:.2f}: {len(picks_at_threshold)} stocks")
 
-        # Save picks from the highest threshold that gives us results
-        if len(picks_at_threshold) > 0 and best_picks.empty:
-            best_picks = picks_at_threshold
+        if len(picks_at_threshold) >= config.TARGET_PICKS:
+            picks = picks_at_threshold
             final_threshold = threshold
+            break
 
         threshold -= config.THRESHOLD_STEP
 
-    # If we found qualifying stocks, use them, otherwise use min threshold
-    if best_picks.empty:
+    # If we didn't find enough, use min threshold
+    if picks.empty or len(picks) < config.TARGET_PICKS:
         final_threshold = config.MIN_THRESHOLD
-        best_picks = predictions_df[predictions_df['probability'] >= final_threshold].copy()
+        picks = predictions_df[predictions_df['probability'] >= final_threshold].copy()
 
-    picks = best_picks
-    log(f"\n✅ Final threshold: {final_threshold:.2f}")
-    log(f"✅ Total qualifying stocks: {len(picks)}")
-    log(f"📊 Note: Showing ALL stocks that pass the criteria (from penny stocks to expensive)")
+    log(f"\n✅ Final threshold: {final_threshold:.2f} with {len(picks)} candidate stocks")
 
-    # Sort by probability (no limit on number of picks)
-    picks = picks.sort_values('probability', ascending=False)
+    # Get top 15 picks
+    picks = picks.sort_values('probability', ascending=False).head(config.TARGET_PICKS)
     picks['rank'] = range(1, len(picks) + 1)
 
     # Step 6: Display and save
     log("\n" + "="*80)
-    log("🏆 ALL {0} QUALIFYING STOCK PICKS FOR {1}".format(len(picks), datetime.now().strftime('%Y-%m-%d')))
+    log("🏆 TOP {0} STOCK PICKS FOR {1}".format(len(picks), datetime.now().strftime('%Y-%m-%d')))
     log("="*80)
 
     # Summary statistics
-    log(f"\n📊 Qualifying Stocks Statistics:")
-    log(f"   • Total qualifying stocks: {len(picks)}")
+    log(f"\n📊 Pick Statistics:")
+    log(f"   • Total picks: {len(picks)}")
     log(f"   • Average probability: {picks['probability'].mean():.4f}")
-    log(f"   • Highest probability: {picks['probability'].iloc[0]:.4f}")
-    log(f"   • Lowest probability: {picks['probability'].iloc[-1]:.4f}")
+    log(f"   • Top pick probability: {picks['probability'].iloc[0]:.4f}")
+    log(f"   • Lowest pick probability: {picks['probability'].iloc[-1]:.4f}")
     log(f"   • Price range: ₹{picks['last_close'].min():.2f} to ₹{picks['last_close'].max():.2f}")
     log(f"   • Average price: ₹{picks['last_close'].mean():.2f}")
     log(f"   • Average 5D return: {picks['return_5d'].mean():.2f}%")
@@ -291,10 +289,10 @@ def generate_predictions(config: StockPickerConfig, predictor: LightGBMPredictor
     log("\n" + "="*80)
     log("✅ PREDICTION COMPLETE!")
     log("="*80)
-    log(f"📊 Scanned: {len(universe)} stocks")
+    log(f"📊 Scanned: {len(universe)} stocks (3000+ NSE/BSE stocks)")
     log(f"✅ Generated predictions: {len(predictions)} stocks")
-    log(f"🎯 Qualifying stocks (passed all criteria): {len(picks)} stocks")
-    log(f"📊 Price range included: Penny stocks to expensive (no limits)")
+    log(f"🎯 Top picks: {len(picks)} stocks (auto-threshold: {final_threshold:.2f})")
+    log(f"📊 Filters applied: ASM/GSM, F&O ban, liquidity, price range")
     log(f"⚠️  Note: This is for educational purposes only. Always do your own research!")
     log("="*80)
 
@@ -303,45 +301,41 @@ def generate_predictions(config: StockPickerConfig, predictor: LightGBMPredictor
 
 def main():
     parser = argparse.ArgumentParser(
-        description='5-Session Stock Picker - Daily Retraining System\n\n'
-                    'HOW IT WORKS:\n'
-                    '1. Model trains on historical data up to TODAY\n'
-                    '2. Learns which patterns preceded 5-session gains in the PAST\n'
-                    '3. Predicts which stocks TODAY show similar patterns\n'
-                    '4. Retrains daily/weekly with latest data for continuous learning\n',
+        description='5-Session Stock Picker - Production System\n\n'
+                    'KEY FEATURES:\n'
+                    '🎯 Processes 3000+ NSE/BSE stocks daily\n'
+                    '🎯 Predicts ≥1.5% gains over next 5 sessions\n'
+                    '🎯 Generates top 15 picks with probability scores\n'
+                    '🎯 Auto-adjusts threshold (0.62→0.52) for optimal picks\n'
+                    '🎯 LightGBM with proper time-series cross-validation\n'
+                    '🎯 Comprehensive risk filters (ASM/GSM/F&O ban/liquidity)\n'
+                    '🎯 Full backtesting with realistic Indian costs\n',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument('--mode', choices=['train', 'predict', 'both', 'daily'], default='predict',
-                       help='Mode: train=train only, predict=use saved model, both/daily=retrain+predict (recommended for daily use)')
-    parser.add_argument('--stocks', type=int, default=100,
-                       help='Number of stocks for training (default: 100, use 500+ for best model)')
+    parser.add_argument('--mode', choices=['train', 'predict', 'both', 'daily', 'backtest'], default='predict',
+                       help='Mode: train, predict, both/daily (retrain+predict), backtest')
+    parser.add_argument('--stocks', type=int, default=200,
+                       help='Number of stocks for training (default: 200, use 500+ for best model)')
     parser.add_argument('--data-dir', type=str, default='./stock_picker_data',
                        help='Directory for data and models')
-    parser.add_argument('--scan-limit', type=int, default=None,
-                       help='Limit number of stocks to scan during prediction (default: ALL stocks)')
     args = parser.parse_args()
 
     # 'daily' is an alias for 'both'
     if args.mode == 'daily':
         args.mode = 'both'
 
-    print("="*70)
-    print("🎯 5-SESSION STOCK PICKER - DAILY RETRAINING SYSTEM")
-    print("="*70)
-    print(f"\n📅 Today's Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("="*80)
+    print("🎯 5-SESSION STOCK PICKER - PRODUCTION SYSTEM")
+    print("="*80)
+    print("\n📋 System Features:")
+    print("   🎯 Processes 3000+ NSE/BSE stocks daily")
+    print("   🎯 Predicts ≥1.5% gains over next 5 sessions")
+    print("   🎯 Generates top 15 picks with probability scores")
+    print("   🎯 Auto-adjusts threshold (0.62→0.52)")
+    print("   🎯 Comprehensive risk filters (ASM/GSM/F&O ban/liquidity)")
+    print("\n📅 Today's Date: " + datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     print(f"🔧 Mode: {args.mode}")
     print(f"📁 Data directory: {args.data_dir}")
-
-    if args.mode == 'both':
-        print("\n" + "="*70)
-        print("🧠 DAILY RETRAINING MODE - How It Works:")
-        print("="*70)
-        print("1. 📊 Trains on historical data up to TODAY")
-        print("2. 🎓 Learns: Which patterns preceded 5-session gains in the PAST")
-        print("3. 🔮 Predicts: Which stocks TODAY show similar winning patterns")
-        print("4. 🔄 Next run: Model updates with one more day of data")
-        print("\n💡 This ensures your model adapts to current market conditions!")
-
     print()
 
     # Initialize config

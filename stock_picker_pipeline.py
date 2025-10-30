@@ -65,14 +65,15 @@ class StockPickerConfig:
         # Prediction parameters
         self.TARGET_GAIN = 1.5  # Minimum gain % over 5 sessions
         self.HOLDING_PERIOD = 5  # Trading sessions
-        # Removed TARGET_PICKS - show ALL stocks that pass criteria
+        self.TARGET_PICKS = 15  # Top 15 picks
         self.INITIAL_THRESHOLD = 0.62
         self.MIN_THRESHOLD = 0.52
         self.THRESHOLD_STEP = 0.02
 
         # Risk filters
-        # Removed MIN_LIQUIDITY - include all stocks regardless of volume
-        # Removed MIN_PRICE and MAX_PRICE - include all stocks from penny to expensive
+        self.MIN_LIQUIDITY = 2000000  # ₹20 lakh minimum turnover
+        self.MIN_PRICE = 10
+        self.MAX_PRICE = 50000
 
         # Data parameters
         self.LOOKBACK_DAYS = 730  # 2 years
@@ -319,21 +320,70 @@ class RiskFilters:
         log(f"Price filter: {len(filtered)}/{len(stock_data)} passed")
         return filtered
 
+    @staticmethod
+    def fetch_asm_gsm_list() -> List[str]:
+        """Fetch ASM/GSM surveillance stocks from NSE"""
+        try:
+            # ASM - Additional Surveillance Measure
+            asm_url = "https://nsearchives.nseindia.com/surveillance/ASM.csv"
+            # GSM - Graded Surveillance Measure
+            gsm_url = "https://nsearchives.nseindia.com/surveillance/GSM.csv"
+
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            surveillance_stocks = []
+
+            for url in [asm_url, gsm_url]:
+                try:
+                    response = requests.get(url, headers=headers, timeout=10)
+                    if response.status_code == 200:
+                        from io import StringIO
+                        df = pd.read_csv(StringIO(response.text))
+                        if not df.empty:
+                            # Get symbol column (might be named differently)
+                            symbol_col = [c for c in df.columns if 'symbol' in c.lower() or 'name' in c.lower()]
+                            if symbol_col:
+                                symbols = df[symbol_col[0]].tolist()
+                                surveillance_stocks.extend(symbols)
+                except Exception as e:
+                    log(f"Could not fetch surveillance list from {url}: {e}", 'WARNING')
+
+            surveillance_stocks = list(set(surveillance_stocks))
+            log(f"ASM/GSM surveillance list: {len(surveillance_stocks)} stocks")
+            return [f"{s}.NS" for s in surveillance_stocks]
+        except Exception as e:
+            log(f"Error fetching ASM/GSM: {e}", 'WARNING')
+        return []
+
     @classmethod
     def apply_all(cls, stock_data: Dict, config: StockPickerConfig):
-        """Apply all filters"""
-        log("Applying risk filters...")
+        """Apply comprehensive risk filters"""
+        log("Applying comprehensive risk filters...")
+        initial_count = len(stock_data)
 
         # F&O ban
         banned = cls.fetch_fno_ban_list()
         if banned:
             stock_data = {s: df for s, df in stock_data.items() if s not in banned}
-            log(f"Excluded {len(banned)} banned stocks")
+            log(f"F&O ban filter: Excluded {initial_count - len(stock_data)} stocks")
 
-        # Note: Liquidity filter removed - include all stocks regardless of volume
-        # Note: Price range filter removed - include all stocks from penny to expensive
+        # ASM/GSM surveillance
+        surveillance = cls.fetch_asm_gsm_list()
+        if surveillance:
+            before = len(stock_data)
+            stock_data = {s: df for s, df in stock_data.items() if s not in surveillance}
+            log(f"ASM/GSM filter: Excluded {before - len(stock_data)} stocks")
 
-        log(f"Final universe: {len(stock_data)} stocks")
+        # Liquidity
+        before = len(stock_data)
+        stock_data = cls.apply_liquidity_filter(stock_data, config.MIN_LIQUIDITY)
+        log(f"Liquidity filter (≥₹{config.MIN_LIQUIDITY/100000:.0f}L): {len(stock_data)}/{before} passed")
+
+        # Price range
+        before = len(stock_data)
+        stock_data = cls.apply_price_filter(stock_data, config.MIN_PRICE, config.MAX_PRICE)
+        log(f"Price filter (₹{config.MIN_PRICE}-₹{config.MAX_PRICE}): {len(stock_data)}/{before} passed")
+
+        log(f"✅ Final universe after all filters: {len(stock_data)} stocks")
         return stock_data
 
 
@@ -516,21 +566,34 @@ class LightGBMPredictor:
         log(f"Model loaded: {path}")
 
 
-def build_stock_universe(max_stocks: int = None) -> List[str]:
+def build_stock_universe(max_stocks: int = None, from_bse_data: pd.DataFrame = None) -> List[str]:
     """
-    Build comprehensive NSE stock universe
+    Build comprehensive NSE/BSE stock universe (3000+ stocks)
 
     Args:
-        max_stocks: Limit number of stocks (None = all stocks)
+        max_stocks: Limit number of stocks (None = all 3000+ stocks)
+        from_bse_data: If provided, extract all unique stock names from BSE data
 
     Returns:
         List of stock symbols with .NS suffix
     """
-    log("Building comprehensive NSE stock universe...")
+    log("Building comprehensive NSE/BSE stock universe (3000+ stocks)...")
 
     all_symbols = set()
 
-    # Method 1: Fetch from NSE indices
+    # Method 1: Extract from BSE data if available (gets ALL 3000+ stocks!)
+    if from_bse_data is not None and not from_bse_data.empty:
+        log("Extracting stocks from BSE BhavCopy data...")
+        unique_stocks = from_bse_data['SC_NAME'].unique() if 'SC_NAME' in from_bse_data.columns else []
+        for stock_name in unique_stocks:
+            # Clean and add stock name
+            if stock_name and isinstance(stock_name, str):
+                clean_name = stock_name.strip().replace(' ', '').replace('-', '').upper()
+                if len(clean_name) > 2:  # Valid symbol
+                    all_symbols.add(clean_name)
+        log(f"✅ Extracted {len(all_symbols)} stocks from BSE data")
+
+    # Method 2: Fetch from NSE indices
     indices = [
         'NIFTY 50', 'NIFTY NEXT 50', 'NIFTY 100', 'NIFTY 200',
         'NIFTY 500', 'NIFTY MIDCAP 50', 'NIFTY MIDCAP 100', 'NIFTY MIDCAP 150',
