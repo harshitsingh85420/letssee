@@ -262,10 +262,11 @@ LightGBM predicts probability of gaining ≥1.5% in next 5 sessions
 
 ```cmd
 REM Every trading day at 9:00 AM
-cd C:\Users\CRL\Desktop\harshit\accouting\letssee
-venv\Scripts\activate.bat
+cd path\to\letssee
 python run_stock_picker.py --mode predict
 ```
+
+**Replace `path\to\letssee` with your actual project path**
 
 ### **Weekly Routine:**
 
