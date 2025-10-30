@@ -65,15 +65,14 @@ class StockPickerConfig:
         # Prediction parameters
         self.TARGET_GAIN = 1.5  # Minimum gain % over 5 sessions
         self.HOLDING_PERIOD = 5  # Trading sessions
-        self.TARGET_PICKS = 15
+        # Removed TARGET_PICKS - show ALL stocks that pass criteria
         self.INITIAL_THRESHOLD = 0.62
         self.MIN_THRESHOLD = 0.52
         self.THRESHOLD_STEP = 0.02
 
         # Risk filters
-        self.MIN_LIQUIDITY = 2000000  # ₹20 lakh
-        self.MIN_PRICE = 10
-        self.MAX_PRICE = 50000
+        # Removed MIN_LIQUIDITY - include all stocks regardless of volume
+        # Removed MIN_PRICE and MAX_PRICE - include all stocks from penny to expensive
 
         # Data parameters
         self.LOOKBACK_DAYS = 730  # 2 years
@@ -102,12 +101,13 @@ class DataLoader:
         self.config = config
         self.memory = Memory(config.CACHE_DIR, verbose=0)
 
-        # Import the proven working BSE fetcher
+        # Import the proven working BSE fetcher with caching
         try:
             from bse_direct_loader import BSEDataFetcher
-            self.bse_fetcher = BSEDataFetcher()
+            cache_path = str(config.CACHE_DIR / 'bse')
+            self.bse_fetcher = BSEDataFetcher(cache_dir=cache_path)
             self.use_bse = True
-            log("✅ Using BSE official BhavCopy data (proven working code)")
+            log("✅ Using BSE official BhavCopy data with caching (proven working code)")
         except Exception as e:
             self.use_bse = False
             log(f"⚠️ BSE loader import failed: {e}, will try yfinance")
@@ -330,41 +330,84 @@ class RiskFilters:
             stock_data = {s: df for s, df in stock_data.items() if s not in banned}
             log(f"Excluded {len(banned)} banned stocks")
 
-        # Liquidity
-        stock_data = cls.apply_liquidity_filter(stock_data, config.MIN_LIQUIDITY)
-
-        # Price range
-        stock_data = cls.apply_price_filter(stock_data, config.MIN_PRICE, config.MAX_PRICE)
+        # Note: Liquidity filter removed - include all stocks regardless of volume
+        # Note: Price range filter removed - include all stocks from penny to expensive
 
         log(f"Final universe: {len(stock_data)} stocks")
         return stock_data
 
 
 class FeatureComputer:
-    """Compute features for stocks"""
+    """Compute features for stocks with intelligent caching"""
 
-    def __init__(self):
+    def __init__(self, cache_dir: str = './stock_picker_data/cache/features'):
         if MODULES_AVAILABLE:
             self.technical = TechnicalIndicators()
             self.volatility = VolatilityEstimators()
             self.patterns = CandlestickPatterns()
             self.engineer = FeatureEngineer()
 
-    def compute_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Compute all features"""
+        # Setup feature cache directory
+        self.cache_dir = Path(cache_dir)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.cache_enabled = True
+
+    def _get_cache_key(self, symbol: str, df: pd.DataFrame) -> str:
+        """Generate cache key based on symbol and data hash"""
+        # Use first and last date + row count as cache key
+        if len(df) == 0:
+            return None
+        first_date = df['date'].iloc[0] if 'date' in df.columns else str(df.index[0])
+        last_date = df['date'].iloc[-1] if 'date' in df.columns else str(df.index[-1])
+        return f"{symbol}_{first_date}_{last_date}_{len(df)}"
+
+    def compute_features(self, df: pd.DataFrame, symbol: str = None) -> pd.DataFrame:
+        """Compute all features with caching"""
+
+        # Try to load from cache if symbol provided
+        if self.cache_enabled and symbol:
+            cache_key = self._get_cache_key(symbol, df)
+            if cache_key:
+                cache_file = self.cache_dir / f"{cache_key}.pkl"
+
+                if cache_file.exists():
+                    try:
+                        cached_df = pd.read_pickle(cache_file)
+                        # Verify cache is valid (same shape)
+                        if len(cached_df) == len(df):
+                            log(f"✅ Loaded cached features for {symbol}", 'DEBUG')
+                            return cached_df
+                    except Exception as e:
+                        log(f"⚠️ Cache load failed for {symbol}: {e}", 'WARNING')
+
+        # Compute features (cache miss or disabled)
+        df_features = df.copy()
+
         if MODULES_AVAILABLE:
-            df = self.technical.calculate_all(df)
-            df = self.volatility.calculate_all(df)
-            df = self.patterns.detect_all_patterns(df)
-            df = self.patterns.calculate_pattern_strength(df)
-            df = self.engineer.create_all_features(df)
+            df_features = self.technical.calculate_all(df_features)
+            df_features = self.volatility.calculate_all(df_features)
+            df_features = self.patterns.detect_all_patterns(df_features)
+            df_features = self.patterns.calculate_pattern_strength(df_features)
+            df_features = self.engineer.create_all_features(df_features)
         else:
             # Basic fallback features
-            df = self._compute_basic_features(df)
+            df_features = self._compute_basic_features(df_features)
 
         # 5-session specific features
-        df = self._add_5session_features(df)
-        return df
+        df_features = self._add_5session_features(df_features)
+
+        # Save to cache if enabled
+        if self.cache_enabled and symbol:
+            cache_key = self._get_cache_key(symbol, df)
+            if cache_key:
+                cache_file = self.cache_dir / f"{cache_key}.pkl"
+                try:
+                    df_features.to_pickle(cache_file)
+                    log(f"💾 Cached features for {symbol}", 'DEBUG')
+                except Exception as e:
+                    log(f"⚠️ Cache save failed for {symbol}: {e}", 'WARNING')
+
+        return df_features
 
     def _compute_basic_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """Basic features using pandas"""

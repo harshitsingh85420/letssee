@@ -2,6 +2,20 @@
 
 **Your system is now fully functional!** This guide shows you how to use it.
 
+## 🧠 Understanding the System
+
+This is a **self-learning stock picker** that:
+
+1. 📊 **Learns from history** - Trains on 2 years of data, learns which patterns preceded 5-session gains
+2. 🔮 **Predicts today** - Finds stocks matching winning patterns
+3. 🔄 **Adapts daily** - Retrains with latest data, self-corrects over time
+
+**Key Insight:** Model learns "When indicators looked like X, Y, Z... stock gained 1.5%+ in next 5 sessions"
+
+**💡 Recommended: Use `--mode daily` to retrain every day for best results!**
+
+**Full explanation: [DAILY_RETRAINING.md](DAILY_RETRAINING.md)**
+
 ---
 
 ## ✅ What You Have Now
@@ -18,15 +32,21 @@ You have **TWO ways** to run the system:
 ### **Quick Test (Start Here)**
 
 ```cmd
-REM Train a small model first (uses 20 stocks, takes 2-3 minutes)
-python run_stock_picker.py --mode train --stocks 20
+REM Option 1: Daily Mode (Recommended) - Retrain + Predict
+python run_stock_picker.py --mode daily --stocks 20
 
-REM Generate predictions
+REM Option 2: Train once, then predict
+python run_stock_picker.py --mode train --stocks 20
 python run_stock_picker.py --mode predict
 
-REM Or do both
+REM Option 3: Same as daily mode (alias)
 python run_stock_picker.py --mode both --stocks 20
 ```
+
+**What's the difference?**
+- `--mode daily` or `--mode both` = Retrains model with today's data, then predicts
+- `--mode train` = Just train and save model
+- `--mode predict` = Use saved model to predict (doesn't retrain)
 
 ### **Production Usage**
 
@@ -55,9 +75,10 @@ python run_stock_picker.py --mode predict --data-dir "D:\trading_data"
 2. ✅ Downloads latest stock data
 3. ✅ Computes features
 4. ✅ Generates predictions
-5. ✅ Auto-adjusts threshold (0.62 → 0.52)
-6. ✅ Displays top 15 picks
-7. ✅ Saves to CSV in `stock_picker_data/results/`
+5. ✅ Auto-adjusts threshold (starts at 0.62)
+6. ✅ Displays ALL qualifying stocks (zero limits!)
+7. ✅ Includes all prices, volumes, liquidity levels
+8. ✅ Saves to CSV in `stock_picker_data/results/`
 
 ---
 
@@ -110,7 +131,7 @@ python run_stock_picker.py --mode predict
 
 **You'll see:**
 ```
-🏆 TOP STOCK PICKS
+🏆 ALL 18 QUALIFYING STOCK PICKS
 ================================================================================
 
 Rank  Symbol         Probability    Price       5D Return %
@@ -119,8 +140,10 @@ Rank  Symbol         Probability    Price       5D Return %
 2     TCS.NS         0.7012        ₹3678.20    1.89
 3     HDFCBANK.NS    0.6845        ₹1534.75    -0.45
 ...
+18    PENNYSTOCK.NS  0.6201        ₹15.50      3.21
 ================================================================================
 
+📊 Qualifying stocks: 18 (from penny stocks to expensive)
 💾 Saved to: ./stock_picker_data/results/picks_2025-10-29_18-15-30.csv
 ```
 
@@ -157,15 +180,9 @@ python run_stock_picker.py --mode predict
 
 ## 🔧 Customization
 
-### **Change Target Picks:**
+### **Change Target Gain:**
 
 Edit `stock_picker_pipeline.py`:
-
-```python
-self.TARGET_PICKS = 20  # Change from 15 to 20
-```
-
-### **Change Target Gain:**
 
 ```python
 self.TARGET_GAIN = 2.0  # Change from 1.5% to 2.0%
@@ -176,6 +193,15 @@ self.TARGET_GAIN = 2.0  # Change from 1.5% to 2.0%
 ```python
 self.HOLDING_PERIOD = 10  # Change from 5 to 10 sessions
 ```
+
+### **Change Probability Threshold:**
+
+```python
+self.INITIAL_THRESHOLD = 0.70  # Change from 0.62 to 0.70 (stricter)
+self.MIN_THRESHOLD = 0.60      # Change from 0.52 to 0.60
+```
+
+**Note:** System shows ALL stocks that pass criteria - zero limits on count, price, volume, or liquidity!
 
 ---
 
@@ -272,10 +298,16 @@ python run_stock_picker.py --mode predict
 - Positive = trending up
 - Negative = trending down
 
+### **Number of Results:**
+- Shows ALL stocks above probability threshold
+- Could be 5 stocks, could be 50+ stocks
+- Zero artificial limits on count, price, or volume
+- Includes all types: penny, expensive, low volume, high volume
+
 ### **Auto-Threshold:**
 - Starts at 0.62 (high confidence only)
-- Reduces to 0.52 if needed
-- Ensures you always get 15 picks
+- Uses highest threshold that gives results
+- Shows ALL stocks at that threshold level
 
 ---
 

@@ -2,6 +2,18 @@
 
 **Follow these exact steps. Copy-paste commands. Takes 5 minutes.**
 
+## 🧠 How This System Works
+
+The stock picker uses **machine learning** to learn from historical patterns:
+
+1. 📊 **Trains on 2 years of data** (up to TODAY) - learns which indicator patterns preceded 5-session gains
+2. 🔮 **Predicts from today's indicators** - finds stocks matching past winners
+3. 🔄 **Retrains daily** with latest data - model adapts and self-corrects
+
+**💡 Recommended: Use `--mode daily` to retrain + predict every day!**
+
+**See [DAILY_RETRAINING.md](DAILY_RETRAINING.md) for full explanation.**
+
 ---
 
 ## ✅ Step 1: Pull Latest Code
@@ -110,28 +122,32 @@ Analyzing stocks: 100%|██████| 335/335 [01:23<00:00, 4.0stock/s]
 ✅ Generated predictions for 335 stocks
 
 ----------------------------------------------------------------------
-STEP 5: Auto-Threshold Adjustment (Finding Best Picks)
+STEP 5: Filtering by Threshold (Finding ALL Qualifying Stocks)
 ----------------------------------------------------------------------
 📊 Probability distribution:
    • Max probability: 0.7842
    • Mean probability: 0.4523
    • Min probability: 0.1234
 
-🎯 Searching for 15 picks (threshold: 0.62 → 0.52):
-   🔍 Threshold 0.62: 8 picks
-   🔍 Threshold 0.60: 12 picks
-   ✅ Threshold 0.58: 17 picks
+🎯 Applying thresholds to find ALL qualifying stocks:
+   🔍 Threshold 0.62: 23 stocks qualify
+   🔍 Threshold 0.60: 35 stocks qualify
+   🔍 Threshold 0.58: 47 stocks qualify
 
-✅ Final threshold: 0.58 with 17 picks
+✅ Final threshold: 0.62
+✅ Total qualifying stocks: 23
+📊 Note: Showing ALL stocks that pass the criteria (from penny stocks to expensive)
 
 ================================================================================
-🏆 TOP 15 STOCK PICKS FOR 2025-10-30
+🏆 ALL 23 QUALIFYING STOCK PICKS FOR 2025-10-30
 ================================================================================
 
-📊 Pick Statistics:
-   • Average probability: 0.6523
-   • Top pick probability: 0.7842
-   • Lowest pick probability: 0.5801
+📊 Qualifying Stocks Statistics:
+   • Total qualifying stocks: 23
+   • Average probability: 0.6734
+   • Highest probability: 0.7842
+   • Lowest probability: 0.6201
+   • Price range: ₹12.50 to ₹6,234.50
    • Average price: ₹1,234.56
    • Average 5D return: 2.34%
 
@@ -154,7 +170,8 @@ Rank  Symbol         Probability    Price       Volume(20D)    5D Return%
 ================================================================================
 📊 Scanned: 523 stocks
 ✅ Generated predictions: 335 stocks
-🎯 Final picks: 15 stocks
+🎯 Qualifying stocks (passed all criteria): 23 stocks
+📊 Price range included: Penny stocks to expensive (no limits)
 ⚠️  Note: This is for educational purposes only. Always do your own research!
 ================================================================================
 ```
@@ -165,29 +182,50 @@ Rank  Symbol         Probability    Price       Volume(20D)    5D Return%
 
 You now have:
 - ✅ Fully trained model
-- ✅ Top 15 stock picks from scanning 500+ stocks
+- ✅ ALL qualifying stock picks from scanning 500+ stocks (zero limits!)
+- ✅ Includes all prices (₹1 to ₹50,000+), all volumes, all liquidity levels
 - ✅ Picks saved to CSV file
 
 ---
 
-## 📅 Daily Use (Every Morning)
+## 📅 Daily Use (Recommended)
+
+**🔥 Option 1: Daily Retraining (Best Results)**
+
+```cmd
+cd path\to\letssee
+python run_stock_picker.py --mode daily --stocks 100
+```
+
+- Retrains model with today's data
+- Model learns latest patterns and self-corrects
+- Takes 5-10 min first run, 2-3 min cached
+- **Recommended for best accuracy!**
+
+**⚡ Option 2: Quick Prediction (Faster)**
 
 ```cmd
 cd path\to\letssee
 python run_stock_picker.py --mode predict
 ```
 
-**Replace `path\to\letssee` with your actual project path**
+- Uses yesterday's saved model
+- Takes 1-2 minutes
+- Good for quick checks, but model doesn't adapt
 
-Takes 1-2 minutes after first run (cached).
+**💡 See [DAILY_RETRAINING.md](DAILY_RETRAINING.md) to understand why daily retraining gives better results!**
+
+**Replace `path\to\letssee` with your actual project path**
 
 ---
 
-## 🔄 Retrain Model (Weekly)
+## 🔄 Weekly Deep Retraining (Optional)
 
 ```cmd
-python run_stock_picker.py --mode train --stocks 100
+python run_stock_picker.py --mode train --stocks 500
 ```
+
+Train on more stocks (500 vs 100) for more comprehensive model. Do this monthly.
 
 ---
 
