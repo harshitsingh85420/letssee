@@ -41,6 +41,17 @@ python run_stock_picker.py --mode predict
 
 ## 🚀 Complete Workflow
 
+### **Step 0: Install Packages (One Time)**
+
+```cmd
+pip install -r requirements.txt
+```
+
+**Or directly:**
+```cmd
+pip install numpy pandas yfinance lightgbm scikit-learn requests beautifulsoup4 tqdm joblib imbalanced-learn python-dateutil pytz numba plotly
+```
+
 ### **Step 1: Train Model (One Time)**
 
 ```cmd
