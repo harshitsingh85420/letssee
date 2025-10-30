@@ -260,12 +260,9 @@ from email.mime.text import MIMEText
 - Or: `chmod +x run_stock_picker.py`
 
 ### **TA-Lib installation fails**
-- TA-Lib is optional
-- System works without it (uses pandas-ta fallback)
-- If you want it:
-  - **Linux:** `sudo apt-get install ta-lib`
-  - **Mac:** `brew install ta-lib`
-  - **Windows:** Download wheel from https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib
+- TA-Lib is optional and NOT required
+- System has built-in implementations for all technical indicators
+- You can safely skip TA-Lib - everything works without it
 
 ### **LightGBM errors**
 - Update: `pip install --upgrade lightgbm`

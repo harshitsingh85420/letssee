@@ -199,7 +199,7 @@ Educational and research use only. See individual files for specific licensing.
 
 - Built with [Claude Code](https://claude.com/claude-code)
 - Uses BSE official data
-- Powered by LightGBM, XGBoost, scikit-learn, pandas-ta
+- Powered by LightGBM, XGBoost, scikit-learn
 
 ---
 
