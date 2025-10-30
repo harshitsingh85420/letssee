@@ -167,6 +167,10 @@ class DataLoader:
 
             else:
                 # Fallback to yfinance
+                if not YFINANCE_AVAILABLE:
+                    log(f"Cannot download {symbol}: yfinance not available", 'ERROR')
+                    return None
+
                 ticker = yf.Ticker(symbol)
                 df = ticker.history(start=start_date, end=end_date, auto_adjust=True)
 
@@ -246,6 +250,12 @@ class DataLoader:
                 # Fall through to individual downloads
 
         # Fallback: individual downloads with yfinance
+        if not YFINANCE_AVAILABLE:
+            log("❌ Cannot download stocks: neither BSE loader nor yfinance available", 'ERROR')
+            log("💡 Install with: pip install yfinance", 'INFO')
+            log("💡 Or ensure indian_trading_system modules are in path", 'INFO')
+            return {}
+
         results = Parallel(n_jobs=4)(
             delayed(self.download_stock)(symbol, start_date, end_date)
             for symbol in tqdm(symbols, desc="Downloading")
