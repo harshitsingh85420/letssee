@@ -63,15 +63,16 @@ def train_model(config: StockPickerConfig, n_stocks: int = 100):
 
     # Step 4: Compute features and prepare dataset
     log("Computing features and preparing ML dataset...")
-    computer = FeatureComputer()
+    cache_path = os.path.join(config.CACHE_DIR, 'features')
+    computer = FeatureComputer(cache_dir=cache_path)
 
     all_data = []
     for symbol, df in stock_data.items():
         df_copy = df.copy()
         df_copy['symbol'] = symbol
 
-        # Compute features
-        df_features = computer.compute_features(df_copy)
+        # Compute features (with caching)
+        df_features = computer.compute_features(df_copy, symbol=symbol)
 
         # Generate labels
         df_labeled = generate_labels(df_features, config.HOLDING_PERIOD, config.TARGET_GAIN)
@@ -177,13 +178,15 @@ def generate_predictions(config: StockPickerConfig, predictor: LightGBMPredictor
     log("-"*70)
     log(f"🔬 Processing {len(stock_data)} stocks with {len(predictor.feature_names)} features each...")
 
-    computer = FeatureComputer()
+    cache_path = os.path.join(config.CACHE_DIR, 'features')
+    computer = FeatureComputer(cache_dir=cache_path)
     predictions = []
 
     from tqdm import tqdm
     for symbol, df in tqdm(stock_data.items(), desc="Analyzing stocks", unit="stock"):
         try:
-            df_features = computer.compute_features(df)
+            # Compute features (with caching)
+            df_features = computer.compute_features(df, symbol=symbol)
             latest = df_features.iloc[-1:].copy()
 
             # Predict
