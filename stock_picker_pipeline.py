@@ -102,19 +102,15 @@ class DataLoader:
         self.config = config
         self.memory = Memory(config.CACHE_DIR, verbose=0)
 
-        # Try to use BSE loader if available
+        # Import the proven working BSE fetcher
         try:
-            if MODULES_AVAILABLE:
-                from indian_trading_system.data.bse_loader import BSEDataLoader
-                self.bse_loader = BSEDataLoader(cache_dir=str(config.CACHE_DIR / 'bse_cache'))
-                log("✅ Using BSE official data loader")
-                self.use_bse = True
-            else:
-                self.use_bse = False
-                log("⚠️ BSE loader not available, using yfinance")
+            from bse_direct_loader import BSEDataFetcher
+            self.bse_fetcher = BSEDataFetcher()
+            self.use_bse = True
+            log("✅ Using BSE official BhavCopy data (proven working code)")
         except Exception as e:
             self.use_bse = False
-            log(f"⚠️ BSE loader not available: {e}, using yfinance")
+            log(f"⚠️ BSE loader import failed: {e}, will try yfinance")
 
     def download_stock(self, symbol: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
         """Download single stock data"""
@@ -195,14 +191,19 @@ class DataLoader:
 
         if self.use_bse:
             try:
-                from datetime import datetime
-                start = datetime.strptime(start_date, '%Y-%m-%d').date()
-                end = datetime.strptime(end_date, '%Y-%m-%d').date()
+                from datetime import datetime as dt
+                start = dt.strptime(start_date, '%Y-%m-%d').date()
+                end = dt.strptime(end_date, '%Y-%m-%d').date()
 
-                # Fetch all BSE data at once (much faster!)
-                log("Fetching BSE BhavCopy data...")
-                all_data = self.bse_loader.fetch_bhav_range(start, end)
-                log(f"✅ Fetched {len(all_data)} total records")
+                # Fetch all BSE data at once (much faster!) using proven code
+                log("Fetching BSE BhavCopy data (official source)...")
+                all_data = self.bse_fetcher.fetch_bhav_range(start, end)
+
+                if all_data.empty:
+                    log("❌ No BSE data fetched, falling back", 'WARNING')
+                    raise Exception("Empty BSE data")
+
+                log(f"✅ Fetched {len(all_data)} total records from BSE")
 
                 # Extract data for each symbol
                 stock_data = {}
@@ -242,20 +243,21 @@ class DataLoader:
 
                     stock_data[symbol] = stock_df
 
-                log(f"✅ Downloaded {len(stock_data)}/{len(symbols)} stocks")
+                log(f"✅ Downloaded {len(stock_data)}/{len(symbols)} stocks from BSE")
                 return stock_data
 
             except Exception as e:
-                log(f"BSE bulk download failed: {e}, falling back to individual downloads", 'WARNING')
+                log(f"BSE bulk download failed: {e}, falling back to yfinance", 'WARNING')
                 # Fall through to individual downloads
 
         # Fallback: individual downloads with yfinance
         if not YFINANCE_AVAILABLE:
             log("❌ Cannot download stocks: neither BSE loader nor yfinance available", 'ERROR')
             log("💡 Install with: pip install yfinance", 'INFO')
-            log("💡 Or ensure indian_trading_system modules are in path", 'INFO')
+            log("💡 Or ensure BSE data fetcher is working", 'INFO')
             return {}
 
+        log("Using yfinance fallback...")
         results = Parallel(n_jobs=4)(
             delayed(self.download_stock)(symbol, start_date, end_date)
             for symbol in tqdm(symbols, desc="Downloading")
