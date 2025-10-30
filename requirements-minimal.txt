@@ -22,7 +22,5 @@ numba>=0.57.0
 # Visualization (optional)
 plotly>=5.17.0
 
-# NOTE: pandas_ta is NOT included here
-# The system has built-in fallbacks for all pandas_ta functionality
-# If you really want it, install separately:
-# pip install git+https://github.com/twopirllc/pandas-ta.git
+# NOTE: pandas_ta is NOT included
+# The system has built-in implementations for all technical indicators

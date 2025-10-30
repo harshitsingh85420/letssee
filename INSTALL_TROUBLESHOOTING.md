@@ -6,29 +6,26 @@ Common installation issues and solutions for Windows, Mac, and Linux.
 
 ## 🚨 Common Errors
 
-### ❌ Error: "Could not find a version that satisfies the requirement pandas-ta"
+### ❌ Error: "Could not find a version that satisfies the requirement pandas_ta"
 
-**Problem:** pandas-ta version mismatch or PyPI issues
+**Problem:** Old requirements.txt had pandas_ta which is no longer needed
 
-**Solutions (try in order):**
+**Solution:** Update your code and use the new requirements.txt:
 
-**Option 1 - Use minimal requirements:**
 ```bash
-pip install -r requirements-minimal.txt
-pip install pandas-ta==0.3.14b0
+# Pull latest code
+git pull origin claude/indian-equity-trading-system-011CUX7MGPY37GwYWmG29cb6
+
+# Install (pandas_ta is removed)
+pip install -r requirements.txt
 ```
 
-**Option 2 - Install pandas-ta from source:**
+**Or install directly:**
 ```bash
-pip install -r requirements-minimal.txt
-pip install git+https://github.com/twopirllc/pandas-ta.git
+pip install numpy pandas yfinance lightgbm scikit-learn requests beautifulsoup4 tqdm joblib imbalanced-learn python-dateutil pytz numba plotly
 ```
 
-**Option 3 - Skip pandas-ta (system works without it):**
-```bash
-pip install -r requirements-minimal.txt
-# System will use built-in fallbacks
-```
+**Note:** pandas_ta is NOT needed - system has built-in fallbacks for all technical indicators
 
 ---
 
