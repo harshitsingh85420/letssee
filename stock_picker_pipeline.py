@@ -15,7 +15,6 @@ from typing import List, Dict, Tuple, Optional
 
 import numpy as np
 import pandas as pd
-import yfinance as yf
 import lightgbm as lgb
 import requests
 from bs4 import BeautifulSoup
@@ -27,6 +26,13 @@ from joblib import Memory, Parallel, delayed
 from tqdm import tqdm
 
 # Optional imports
+try:
+    import yfinance as yf
+    YFINANCE_AVAILABLE = True
+except ImportError:
+    YFINANCE_AVAILABLE = False
+    print("⚠️ yfinance not available, will use BSE data only")
+
 try:
     from imblearn.over_sampling import SMOTE
     SMOTE_AVAILABLE = True
