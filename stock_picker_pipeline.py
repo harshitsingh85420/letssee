@@ -65,15 +65,14 @@ class StockPickerConfig:
         # Prediction parameters
         self.TARGET_GAIN = 1.5  # Minimum gain % over 5 sessions
         self.HOLDING_PERIOD = 5  # Trading sessions
-        self.TARGET_PICKS = 15
+        # Removed TARGET_PICKS - show ALL stocks that pass criteria
         self.INITIAL_THRESHOLD = 0.62
         self.MIN_THRESHOLD = 0.52
         self.THRESHOLD_STEP = 0.02
 
         # Risk filters
         self.MIN_LIQUIDITY = 2000000  # ₹20 lakh
-        self.MIN_PRICE = 10
-        self.MAX_PRICE = 50000
+        # Removed MIN_PRICE and MAX_PRICE - include all stocks from penny to expensive
 
         # Data parameters
         self.LOOKBACK_DAYS = 730  # 2 years
@@ -334,8 +333,7 @@ class RiskFilters:
         # Liquidity
         stock_data = cls.apply_liquidity_filter(stock_data, config.MIN_LIQUIDITY)
 
-        # Price range
-        stock_data = cls.apply_price_filter(stock_data, config.MIN_PRICE, config.MAX_PRICE)
+        # Note: Price range filter removed - include all stocks from penny to expensive
 
         log(f"Final universe: {len(stock_data)} stocks")
         return stock_data

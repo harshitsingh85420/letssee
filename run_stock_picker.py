@@ -206,9 +206,9 @@ def generate_predictions(config: StockPickerConfig, predictor: LightGBMPredictor
 
     log(f"✅ Generated predictions for {len(predictions)} stocks")
 
-    # Step 5: Auto-threshold to get target picks
+    # Step 5: Apply threshold to get ALL qualifying stocks
     log("\n" + "-"*70)
-    log("STEP 5: Auto-Threshold Adjustment (Finding Best Picks)")
+    log("STEP 5: Filtering by Threshold (Finding ALL Qualifying Stocks)")
     log("-"*70)
 
     predictions_df = pd.DataFrame(predictions)
@@ -219,36 +219,49 @@ def generate_predictions(config: StockPickerConfig, predictor: LightGBMPredictor
     log(f"   • Mean probability: {predictions_df['probability'].mean():.4f}")
     log(f"   • Min probability: {predictions_df['probability'].min():.4f}")
 
-    log(f"\n🎯 Searching for {config.TARGET_PICKS} picks (threshold: {config.INITIAL_THRESHOLD:.2f} → {config.MIN_THRESHOLD:.2f}):")
+    log(f"\n🎯 Applying thresholds to find ALL qualifying stocks:")
 
+    # Try different thresholds and show how many pass at each level
     threshold = config.INITIAL_THRESHOLD
-    picks = pd.DataFrame()
+    best_picks = pd.DataFrame()
 
     while threshold >= config.MIN_THRESHOLD:
-        picks = predictions_df[predictions_df['probability'] >= threshold].copy()
-        status = "✅" if len(picks) >= config.TARGET_PICKS else "🔍"
-        log(f"   {status} Threshold {threshold:.2f}: {len(picks)} picks")
+        picks_at_threshold = predictions_df[predictions_df['probability'] >= threshold].copy()
+        log(f"   🔍 Threshold {threshold:.2f}: {len(picks_at_threshold)} stocks qualify")
 
-        if len(picks) >= config.TARGET_PICKS:
-            break
+        # Save picks from the highest threshold that gives us results
+        if len(picks_at_threshold) > 0 and best_picks.empty:
+            best_picks = picks_at_threshold
+            final_threshold = threshold
+
         threshold -= config.THRESHOLD_STEP
 
-    log(f"\n✅ Final threshold: {threshold:.2f} with {len(picks)} picks")
+    # If we found qualifying stocks, use them, otherwise use min threshold
+    if best_picks.empty:
+        final_threshold = config.MIN_THRESHOLD
+        best_picks = predictions_df[predictions_df['probability'] >= final_threshold].copy()
 
-    # Get top picks
-    picks = picks.sort_values('probability', ascending=False).head(config.TARGET_PICKS)
+    picks = best_picks
+    log(f"\n✅ Final threshold: {final_threshold:.2f}")
+    log(f"✅ Total qualifying stocks: {len(picks)}")
+    log(f"📊 Note: Showing ALL stocks that pass the criteria (from penny stocks to expensive)")
+
+    # Sort by probability (no limit on number of picks)
+    picks = picks.sort_values('probability', ascending=False)
     picks['rank'] = range(1, len(picks) + 1)
 
     # Step 6: Display and save
     log("\n" + "="*80)
-    log("🏆 TOP {0} STOCK PICKS FOR {1}".format(len(picks), datetime.now().strftime('%Y-%m-%d')))
+    log("🏆 ALL {0} QUALIFYING STOCK PICKS FOR {1}".format(len(picks), datetime.now().strftime('%Y-%m-%d')))
     log("="*80)
 
     # Summary statistics
-    log(f"\n📊 Pick Statistics:")
+    log(f"\n📊 Qualifying Stocks Statistics:")
+    log(f"   • Total qualifying stocks: {len(picks)}")
     log(f"   • Average probability: {picks['probability'].mean():.4f}")
-    log(f"   • Top pick probability: {picks['probability'].iloc[0]:.4f}")
-    log(f"   • Lowest pick probability: {picks['probability'].iloc[-1]:.4f}")
+    log(f"   • Highest probability: {picks['probability'].iloc[0]:.4f}")
+    log(f"   • Lowest probability: {picks['probability'].iloc[-1]:.4f}")
+    log(f"   • Price range: ₹{picks['last_close'].min():.2f} to ₹{picks['last_close'].max():.2f}")
     log(f"   • Average price: ₹{picks['last_close'].mean():.2f}")
     log(f"   • Average 5D return: {picks['return_5d'].mean():.2f}%")
 
@@ -277,7 +290,8 @@ def generate_predictions(config: StockPickerConfig, predictor: LightGBMPredictor
     log("="*80)
     log(f"📊 Scanned: {len(universe)} stocks")
     log(f"✅ Generated predictions: {len(predictions)} stocks")
-    log(f"🎯 Final picks: {len(picks)} stocks")
+    log(f"🎯 Qualifying stocks (passed all criteria): {len(picks)} stocks")
+    log(f"📊 Price range included: Penny stocks to expensive (no limits)")
     log(f"⚠️  Note: This is for educational purposes only. Always do your own research!")
     log("="*80)
 

@@ -50,11 +50,11 @@ python run_stock_picker.py --mode predict
 **What Happens:**
 1. ✅ Builds universe from ALL NSE indices (~500-700 stocks)
 2. ✅ Downloads latest data for ALL stocks (from cache if available)
-3. ✅ Applies risk filters (liquidity, price, F&O ban)
+3. ✅ Applies risk filters (liquidity, F&O ban - NO price limits!)
 4. ✅ Computes features for ALL qualified stocks
 5. ✅ Runs ML model on ALL stocks
 6. ✅ Shows which stocks pass algo criteria
-7. ✅ Returns top 15 picks
+7. ✅ Returns ALL qualifying stocks (from penny stocks to expensive - no limits!)
 
 ### Output Shows Everything:
 
@@ -88,27 +88,31 @@ Analyzing stocks: 100%|██████████| 335/335 [01:23<00:00, 4.0
 ✅ Generated predictions for 335 stocks
 
 ----------------------------------------------------------------------
-STEP 5: Auto-Threshold Adjustment (Finding Best Picks)
+STEP 5: Filtering by Threshold (Finding ALL Qualifying Stocks)
 ----------------------------------------------------------------------
 📊 Probability distribution:
    • Max probability: 0.7842
    • Mean probability: 0.4523
    • Min probability: 0.1234
 
-🎯 Searching for 15 picks (threshold: 0.62 → 0.52):
-   🔍 Threshold 0.62: 8 picks
-   🔍 Threshold 0.60: 12 picks
-   ✅ Threshold 0.58: 17 picks
+🎯 Applying thresholds to find ALL qualifying stocks:
+   🔍 Threshold 0.62: 23 stocks qualify
+   🔍 Threshold 0.60: 35 stocks qualify
+   🔍 Threshold 0.58: 47 stocks qualify
+   🔍 Threshold 0.56: 58 stocks qualify
 
-✅ Final threshold: 0.58 with 17 picks
+✅ Final threshold: 0.62
+✅ Total qualifying stocks: 23
+📊 Note: Showing ALL stocks that pass the criteria (from penny stocks to expensive)
 ```
 
 **You can see:**
 - How many stocks started (523)
 - How many got filtered out (152)
-- Why they were filtered (liquidity, price, F&O ban)
-- How many passed criteria (335)
-- Final picks (15)
+- Why they were filtered (liquidity, F&O ban - NO price filtering!)
+- How many passed ML predictions (335)
+- Final qualifying stocks (23 in this example - can be any number!)
+- **Note:** NO limits on price range - includes penny stocks to expensive stocks
 
 ---
 
@@ -126,14 +130,11 @@ STEP 5: Auto-Threshold Adjustment (Finding Best Picks)
 - ✅ Average daily turnover ≥ ₹20 lakh
 - ❌ Removes: Low-liquidity, hard-to-trade stocks
 
-### 4. **Price Range Filter**
-- ✅ Stock price between ₹10 and ₹50,000
-- ❌ Removes: Penny stocks, extremely expensive stocks
-
-### 5. **ML Model Prediction**
-- ✅ Probability score ≥ threshold (0.62 → 0.52)
-- ❌ Removes: Low-probability predictions
-- 🎯 Picks: Top 15 stocks with highest probabilities
+### 4. **ML Model Prediction**
+- ✅ Probability score ≥ threshold (starts at 0.62)
+- ❌ Filters: Low-probability predictions
+- 🎯 Result: ALL stocks above threshold - no limits!
+- 📊 Includes: Penny stocks to expensive stocks (₹1 to ₹50,000+)
 
 ---
 
@@ -198,7 +199,7 @@ python run_stock_picker.py --mode train --stocks 200
 ## ❓ FAQ
 
 **Q: Does it scan all ~500 stocks every time?**
-A: YES! By default, predicts mode scans ALL stocks in the universe.
+A: YES! By default, predict mode scans ALL stocks in the universe.
 
 **Q: Is the data re-downloaded every time?**
 A: NO! Data is cached. First download takes 3-5 min, subsequent runs load from cache in 5-10 seconds.
@@ -206,8 +207,11 @@ A: NO! Data is cached. First download takes 3-5 min, subsequent runs load from c
 **Q: Can I see which stocks failed the filters?**
 A: YES! The output shows filter progression at each step.
 
-**Q: How do I know if a stock passed the algo criteria?**
-A: Check the "Passed all filters" count and final picks. Only stocks passing ALL criteria get predictions.
+**Q: How many stocks will I get in the results?**
+A: ANY NUMBER from 0 to maximum! System shows ALL stocks that pass the ML model criteria. Could be 5, could be 50, could be 100+.
+
+**Q: Does it filter by price (penny stocks vs expensive)?**
+A: NO! System includes ALL stocks from ₹1 penny stocks to ₹50,000+ expensive stocks. No price limits!
 
 **Q: Where are the picks saved?**
 A: `stock_picker_data/results/picks_YYYY-MM-DD_HH-MM-SS.csv`
@@ -223,6 +227,8 @@ A: Weekly recommended. Cache makes it fast!
 **Scanning:** ✅ All stocks by default
 **Filters:** ✅ Clear output shows what passed
 **Performance:** ✅ Fast after first run
+**Results:** ✅ ALL qualifying stocks (no limits on count or price!)
+**Range:** ✅ Penny stocks to expensive stocks included
 
 Just run:
 ```cmd

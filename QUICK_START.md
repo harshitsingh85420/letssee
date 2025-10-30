@@ -55,9 +55,10 @@ python run_stock_picker.py --mode predict --data-dir "D:\trading_data"
 2. ✅ Downloads latest stock data
 3. ✅ Computes features
 4. ✅ Generates predictions
-5. ✅ Auto-adjusts threshold (0.62 → 0.52)
-6. ✅ Displays top 15 picks
-7. ✅ Saves to CSV in `stock_picker_data/results/`
+5. ✅ Auto-adjusts threshold (starts at 0.62)
+6. ✅ Displays ALL qualifying stocks (no limits!)
+7. ✅ Includes penny stocks to expensive stocks
+8. ✅ Saves to CSV in `stock_picker_data/results/`
 
 ---
 
@@ -110,7 +111,7 @@ python run_stock_picker.py --mode predict
 
 **You'll see:**
 ```
-🏆 TOP STOCK PICKS
+🏆 ALL 18 QUALIFYING STOCK PICKS
 ================================================================================
 
 Rank  Symbol         Probability    Price       5D Return %
@@ -119,8 +120,10 @@ Rank  Symbol         Probability    Price       5D Return %
 2     TCS.NS         0.7012        ₹3678.20    1.89
 3     HDFCBANK.NS    0.6845        ₹1534.75    -0.45
 ...
+18    PENNYSTOCK.NS  0.6201        ₹15.50      3.21
 ================================================================================
 
+📊 Qualifying stocks: 18 (from penny stocks to expensive)
 💾 Saved to: ./stock_picker_data/results/picks_2025-10-29_18-15-30.csv
 ```
 
@@ -157,15 +160,9 @@ python run_stock_picker.py --mode predict
 
 ## 🔧 Customization
 
-### **Change Target Picks:**
+### **Change Target Gain:**
 
 Edit `stock_picker_pipeline.py`:
-
-```python
-self.TARGET_PICKS = 20  # Change from 15 to 20
-```
-
-### **Change Target Gain:**
 
 ```python
 self.TARGET_GAIN = 2.0  # Change from 1.5% to 2.0%
@@ -176,6 +173,15 @@ self.TARGET_GAIN = 2.0  # Change from 1.5% to 2.0%
 ```python
 self.HOLDING_PERIOD = 10  # Change from 5 to 10 sessions
 ```
+
+### **Change Probability Threshold:**
+
+```python
+self.INITIAL_THRESHOLD = 0.70  # Change from 0.62 to 0.70 (stricter)
+self.MIN_THRESHOLD = 0.60      # Change from 0.52 to 0.60
+```
+
+**Note:** System shows ALL stocks that pass criteria - no artificial limits on count or price!
 
 ---
 
@@ -272,10 +278,16 @@ python run_stock_picker.py --mode predict
 - Positive = trending up
 - Negative = trending down
 
+### **Number of Results:**
+- Shows ALL stocks above probability threshold
+- Could be 5 stocks, could be 50+ stocks
+- No artificial limits on count
+- Includes penny stocks to expensive stocks
+
 ### **Auto-Threshold:**
 - Starts at 0.62 (high confidence only)
-- Reduces to 0.52 if needed
-- Ensures you always get 15 picks
+- Uses highest threshold that gives results
+- Shows ALL stocks at that threshold level
 
 ---
 
