@@ -7,9 +7,11 @@
 ## ✅ Step 1: Pull Latest Code
 
 ```cmd
-cd C:\Users\CRL\Desktop\harshit\accouting\letssee
+cd path\to\letssee
 git pull origin claude/indian-equity-trading-system-011CUX7MGPY37GwYWmG29cb6
 ```
+
+**Replace `path\to\letssee` with your actual project path**
 
 ---
 
@@ -75,40 +77,86 @@ python run_stock_picker.py --mode predict
 🔮 GENERATING DAILY PREDICTIONS - SCANNING ALL STOCKS
 ======================================================================
 
-Building comprehensive NSE stock universe...
-✅ Built universe: 523 stocks
-🎯 Scanning 523 stocks to find the BEST picks
+📂 Loading trained model...
+✅ Model loaded with 42 features
 
-Downloading 523 stocks...
-[Progress bar]
-Downloaded 487/523 stocks
+----------------------------------------------------------------------
+STEP 1: Building Stock Universe
+----------------------------------------------------------------------
+🎯 Target universe: 523 stocks
+📊 Sources: Nifty 50, Next 50, Midcap 100, Smallcap 250
 
-Applying risk filters...
-Liquidity filter: 342/487 stocks passed
-Price filter: 315/342 stocks passed
-Final universe: 315 stocks
+----------------------------------------------------------------------
+STEP 2: Downloading Historical Data
+----------------------------------------------------------------------
+📅 Date range: 2023-10-31 to 2025-10-30 (730 days)
+Downloading: 100%|████████████| 523/523 [02:34<00:00, 3.4stock/s]
+✅ Downloaded: 487/523 stocks
+❌ Failed/Insufficient data: 36 stocks
 
-Computing features and making predictions...
-[Progress bar]
+----------------------------------------------------------------------
+STEP 3: Applying Risk Filters
+----------------------------------------------------------------------
+📊 Filter summary:
+   • Started with: 487 stocks
+   • Filtered out: 152 stocks
+   • ✅ Passed all filters: 335 stocks
 
-Threshold 0.62: 8 picks
-Threshold 0.60: 12 picks
-Threshold 0.58: 17 picks
+----------------------------------------------------------------------
+STEP 4: Computing Features & Making Predictions
+----------------------------------------------------------------------
+🔬 Processing 335 stocks with 42 features each...
+Analyzing stocks: 100%|██████| 335/335 [01:23<00:00, 4.0stock/s]
+✅ Generated predictions for 335 stocks
 
-🏆 TOP STOCK PICKS
+----------------------------------------------------------------------
+STEP 5: Auto-Threshold Adjustment (Finding Best Picks)
+----------------------------------------------------------------------
+📊 Probability distribution:
+   • Max probability: 0.7842
+   • Mean probability: 0.4523
+   • Min probability: 0.1234
+
+🎯 Searching for 15 picks (threshold: 0.62 → 0.52):
+   🔍 Threshold 0.62: 8 picks
+   🔍 Threshold 0.60: 12 picks
+   ✅ Threshold 0.58: 17 picks
+
+✅ Final threshold: 0.58 with 17 picks
+
 ================================================================================
-Rank  Symbol         Probability    Price       5D Return %
+🏆 TOP 15 STOCK PICKS FOR 2025-10-30
 ================================================================================
-1     DIXON.NS       0.7856        ₹6234.50    3.45
-2     TITAN.NS       0.7634        ₹3456.75    2.87
-3     BAJFINANCE.NS  0.7512        ₹7234.20    1.92
+
+📊 Pick Statistics:
+   • Average probability: 0.6523
+   • Top pick probability: 0.7842
+   • Lowest pick probability: 0.5801
+   • Average price: ₹1,234.56
+   • Average 5D return: 2.34%
+
+--------------------------------------------------------------------------------
+
+Rank  Symbol         Probability    Price       Volume(20D)    5D Return%
+================================================================================
+1     DIXON.NS       0.7856        ₹6234.50    15.23M         3.45
+2     TITAN.NS       0.7634        ₹3456.75    8.67M          2.87
+3     BAJFINANCE.NS  0.7512        ₹7234.20    12.45M         1.92
 ...
-15    LTIM.NS        0.6567        ₹5234.50    1.98
+15    LTIM.NS        0.6567        ₹5234.50    3.21M          1.98
 ================================================================================
 
-💾 Saved to: ./stock_picker_data/results/picks_2025-10-29_19-30-45.csv
+💾 Results saved to: ./stock_picker_data/results/picks_2025-10-30_14-40-09.csv
+📁 Full results directory: ./stock_picker_data/results
 
-✅ DONE!
+================================================================================
+✅ PREDICTION COMPLETE!
+================================================================================
+📊 Scanned: 523 stocks
+✅ Generated predictions: 335 stocks
+🎯 Final picks: 15 stocks
+⚠️  Note: This is for educational purposes only. Always do your own research!
+================================================================================
 ```
 
 ---
@@ -125,10 +173,11 @@ You now have:
 ## 📅 Daily Use (Every Morning)
 
 ```cmd
-cd C:\Users\CRL\Desktop\harshit\accouting\letssee
-venv\Scripts\activate.bat
+cd path\to\letssee
 python run_stock_picker.py --mode predict
 ```
+
+**Replace `path\to\letssee` with your actual project path**
 
 Takes 1-2 minutes after first run (cached).
 

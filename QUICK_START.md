@@ -134,11 +134,12 @@ Create a batch file `run_daily_picks.bat`:
 
 ```batch
 @echo off
-cd C:\Users\CRL\Desktop\harshit\accouting\letssee
-call venv\Scripts\activate.bat
+cd path\to\letssee
 python run_stock_picker.py --mode predict
 pause
 ```
+
+**Replace `path\to\letssee` with your actual project path**
 
 Schedule it to run daily at 9:00 AM.
 
@@ -146,10 +147,11 @@ Schedule it to run daily at 9:00 AM.
 
 ```cmd
 REM Every morning:
-cd C:\Users\CRL\Desktop\harshit\accouting\letssee
-venv\Scripts\activate.bat
+cd path\to\letssee
 python run_stock_picker.py --mode predict
 ```
+
+**Replace `path\to\letssee` with your actual project path**
 
 ---
 
