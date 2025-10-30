@@ -71,7 +71,7 @@ class StockPickerConfig:
         self.THRESHOLD_STEP = 0.02
 
         # Risk filters
-        self.MIN_LIQUIDITY = 2000000  # ₹20 lakh
+        # Removed MIN_LIQUIDITY - include all stocks regardless of volume
         # Removed MIN_PRICE and MAX_PRICE - include all stocks from penny to expensive
 
         # Data parameters
@@ -330,9 +330,7 @@ class RiskFilters:
             stock_data = {s: df for s, df in stock_data.items() if s not in banned}
             log(f"Excluded {len(banned)} banned stocks")
 
-        # Liquidity
-        stock_data = cls.apply_liquidity_filter(stock_data, config.MIN_LIQUIDITY)
-
+        # Note: Liquidity filter removed - include all stocks regardless of volume
         # Note: Price range filter removed - include all stocks from penny to expensive
 
         log(f"Final universe: {len(stock_data)} stocks")

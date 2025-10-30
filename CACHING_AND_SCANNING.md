@@ -50,11 +50,11 @@ python run_stock_picker.py --mode predict
 **What Happens:**
 1. ✅ Builds universe from ALL NSE indices (~500-700 stocks)
 2. ✅ Downloads latest data for ALL stocks (from cache if available)
-3. ✅ Applies risk filters (liquidity, F&O ban - NO price limits!)
+3. ✅ Applies risk filters (F&O ban only - NO price or volume limits!)
 4. ✅ Computes features for ALL qualified stocks
 5. ✅ Runs ML model on ALL stocks
 6. ✅ Shows which stocks pass algo criteria
-7. ✅ Returns ALL qualifying stocks (from penny stocks to expensive - no limits!)
+7. ✅ Returns ALL qualifying stocks (from penny stocks to expensive, low to high volume - no limits!)
 
 ### Output Shows Everything:
 
@@ -108,33 +108,31 @@ STEP 5: Filtering by Threshold (Finding ALL Qualifying Stocks)
 
 **You can see:**
 - How many stocks started (523)
-- How many got filtered out (152)
-- Why they were filtered (liquidity, F&O ban - NO price filtering!)
-- How many passed ML predictions (335)
+- How many got filtered out (only F&O banned stocks)
+- How many passed ML predictions (400+)
 - Final qualifying stocks (23 in this example - can be any number!)
-- **Note:** NO limits on price range - includes penny stocks to expensive stocks
+- **Note:** NO limits on price, volume, or liquidity - includes ALL stocks!
 
 ---
 
 ## 📊 Understanding the Filters (Algo Criteria)
 
 ### 1. **Data Availability Filter**
-- ✅ Stock must have sufficient historical data
+- ✅ Stock must have sufficient historical data (200+ data points)
 - ❌ Removes: Newly listed stocks, delisted stocks
 
 ### 2. **F&O Ban Filter**
 - ✅ Stock not in F&O ban period
 - ❌ Removes: Stocks currently banned from F&O trading
 
-### 3. **Liquidity Filter**
-- ✅ Average daily turnover ≥ ₹20 lakh
-- ❌ Removes: Low-liquidity, hard-to-trade stocks
-
-### 4. **ML Model Prediction**
+### 3. **ML Model Prediction**
 - ✅ Probability score ≥ threshold (starts at 0.62)
-- ❌ Filters: Low-probability predictions
+- ❌ Filters: Low-probability predictions only
 - 🎯 Result: ALL stocks above threshold - no limits!
-- 📊 Includes: Penny stocks to expensive stocks (₹1 to ₹50,000+)
+- 📊 Includes:
+  - Penny stocks to expensive stocks (₹1 to ₹50,000+)
+  - Low volume to high volume (all liquidity levels)
+  - Small cap to large cap
 
 ---
 
@@ -210,8 +208,8 @@ A: YES! The output shows filter progression at each step.
 **Q: How many stocks will I get in the results?**
 A: ANY NUMBER from 0 to maximum! System shows ALL stocks that pass the ML model criteria. Could be 5, could be 50, could be 100+.
 
-**Q: Does it filter by price (penny stocks vs expensive)?**
-A: NO! System includes ALL stocks from ₹1 penny stocks to ₹50,000+ expensive stocks. No price limits!
+**Q: Does it filter by price or volume?**
+A: NO! System includes ALL stocks - penny stocks, expensive stocks, low volume, high volume. Zero limits!
 
 **Q: Where are the picks saved?**
 A: `stock_picker_data/results/picks_YYYY-MM-DD_HH-MM-SS.csv`
@@ -225,10 +223,10 @@ A: Weekly recommended. Cache makes it fast!
 
 **Caching:** ✅ Automatic
 **Scanning:** ✅ All stocks by default
-**Filters:** ✅ Clear output shows what passed
+**Filters:** ✅ F&O ban only - minimal filtering!
 **Performance:** ✅ Fast after first run
-**Results:** ✅ ALL qualifying stocks (no limits on count or price!)
-**Range:** ✅ Penny stocks to expensive stocks included
+**Results:** ✅ ALL qualifying stocks (zero limits!)
+**Included:** ✅ All prices, all volumes, all liquidity levels
 
 Just run:
 ```cmd

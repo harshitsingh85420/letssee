@@ -56,8 +56,8 @@ python run_stock_picker.py --mode predict --data-dir "D:\trading_data"
 3. ✅ Computes features
 4. ✅ Generates predictions
 5. ✅ Auto-adjusts threshold (starts at 0.62)
-6. ✅ Displays ALL qualifying stocks (no limits!)
-7. ✅ Includes penny stocks to expensive stocks
+6. ✅ Displays ALL qualifying stocks (zero limits!)
+7. ✅ Includes all prices, volumes, liquidity levels
 8. ✅ Saves to CSV in `stock_picker_data/results/`
 
 ---
@@ -181,7 +181,7 @@ self.INITIAL_THRESHOLD = 0.70  # Change from 0.62 to 0.70 (stricter)
 self.MIN_THRESHOLD = 0.60      # Change from 0.52 to 0.60
 ```
 
-**Note:** System shows ALL stocks that pass criteria - no artificial limits on count or price!
+**Note:** System shows ALL stocks that pass criteria - zero limits on count, price, volume, or liquidity!
 
 ---
 
@@ -281,8 +281,8 @@ python run_stock_picker.py --mode predict
 ### **Number of Results:**
 - Shows ALL stocks above probability threshold
 - Could be 5 stocks, could be 50+ stocks
-- No artificial limits on count
-- Includes penny stocks to expensive stocks
+- Zero artificial limits on count, price, or volume
+- Includes all types: penny, expensive, low volume, high volume
 
 ### **Auto-Threshold:**
 - Starts at 0.62 (high confidence only)

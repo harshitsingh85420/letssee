@@ -170,8 +170,8 @@ Rank  Symbol         Probability    Price       Volume(20D)    5D Return%
 
 You now have:
 - ✅ Fully trained model
-- ✅ ALL qualifying stock picks from scanning 500+ stocks (no limits!)
-- ✅ Includes penny stocks to expensive stocks (₹1 to ₹50,000+)
+- ✅ ALL qualifying stock picks from scanning 500+ stocks (zero limits!)
+- ✅ Includes all prices (₹1 to ₹50,000+), all volumes, all liquidity levels
 - ✅ Picks saved to CSV file
 
 ---
