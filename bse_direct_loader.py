@@ -1,11 +1,15 @@
 """
 Direct BSE BhavCopy data loader - Proven working code
 This is the exact code that works from the user's previous project
+With added caching to avoid re-downloading data
 """
 
 import io
+import os
+import pickle
 import zipfile
 from datetime import date, timedelta
+from pathlib import Path
 from typing import Optional
 
 import pandas as pd
@@ -13,11 +17,17 @@ import requests
 
 
 class BSEDataFetcher:
-    """Direct BSE BhavCopy data fetcher"""
+    """Direct BSE BhavCopy data fetcher with caching"""
 
     # BSE BhavCopy URLs
     UDIFF_URL = "https://www.bseindia.com/download/BhavCopy/Equity/BhavCopy_BSE_CM_0_0_0_{ymd}_F_0000.CSV"
     LEGACY_URL = "https://www.bseindia.com/download/BhavCopy/Equity/EQ{ddmmyy}_CSV.ZIP"
+
+    def __init__(self, cache_dir: str = "./stock_picker_data/cache/bse"):
+        """Initialize with cache directory"""
+        self.cache_dir = Path(cache_dir)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        print(f"📁 BSE cache directory: {self.cache_dir}")
 
     # Column mapping
     CANON = {
@@ -50,11 +60,10 @@ class BSEDataFetcher:
             print(f"[http] {e} :: {url}")
             return None
 
-    @classmethod
-    def normalize_bhav(cls, df: pd.DataFrame) -> pd.DataFrame:
+    def normalize_bhav(self, df: pd.DataFrame) -> pd.DataFrame:
         """Normalize BhavCopy columns to standard format"""
         out = pd.DataFrame()
-        for src, tgt in cls.CANON.items():
+        for src, tgt in self.CANON.items():
             if src in df.columns:
                 out[tgt] = df[src].copy()
 
@@ -70,31 +79,30 @@ class BSEDataFetcher:
         if "DATE" in out:
             out["DATE"] = pd.to_datetime(out["DATE"]).dt.date
 
-        missing = [c for c in cls.REQUIRED if c not in out.columns]
+        missing = [c for c in self.REQUIRED if c not in out.columns]
         if missing:
             return pd.DataFrame()  # Skip if columns missing
 
         out = out.dropna(subset=["Close", "High", "Low", "Open"])
         out["SC_CODE"] = out["SC_CODE"].astype(str)
-        return out[cls.REQUIRED]
+        return out[self.REQUIRED]
 
-    @classmethod
-    def fetch_bhav_for(cls, d: date) -> Optional[pd.DataFrame]:
+    def fetch_bhav_for(self, d: date) -> Optional[pd.DataFrame]:
         """Fetch BhavCopy for a single date"""
         # Try UDiFF CSV
-        url = cls.UDIFF_URL.format(ymd=cls.ymd(d))
-        r = cls.safe_get(url)
+        url = self.UDIFF_URL.format(ymd=self.ymd(d))
+        r = self.safe_get(url)
         if r and r.ok:
             try:
                 df = pd.read_csv(io.BytesIO(r.content))
                 df["DATE"] = pd.to_datetime(d).date()
-                return cls.normalize_bhav(df)
+                return self.normalize_bhav(df)
             except Exception:
                 pass
 
         # Fallback to legacy ZIP
-        url = cls.LEGACY_URL.format(ddmmyy=cls.ddmmyy(d))
-        r = cls.safe_get(url)
+        url = self.LEGACY_URL.format(ddmmyy=self.ddmmyy(d))
+        r = self.safe_get(url)
         if r and r.ok:
             try:
                 with zipfile.ZipFile(io.BytesIO(r.content)) as zf:
@@ -102,20 +110,30 @@ class BSEDataFetcher:
                     with zf.open(name) as f:
                         df = pd.read_csv(f)
                 df["DATE"] = pd.to_datetime(d).date()
-                return cls.normalize_bhav(df)
+                return self.normalize_bhav(df)
             except Exception:
                 pass
 
         return None
 
-    @classmethod
-    def fetch_bhav_range(cls, start_date: date, end_date: date) -> pd.DataFrame:
-        """Fetch BhavCopy data for a date range"""
+    def fetch_bhav_range(self, start_date: date, end_date: date) -> pd.DataFrame:
+        """Fetch BhavCopy data for a date range with caching"""
+        # Check if cached
+        cache_key = f"bhav_{self.ymd(start_date)}_{self.ymd(end_date)}.pkl"
+        cache_file = self.cache_dir / cache_key
+
+        if cache_file.exists():
+            print(f"✅ Loading from cache: {cache_key}")
+            with open(cache_file, 'rb') as f:
+                return pickle.load(f)
+
+        # Download fresh data
+        print(f"📥 Downloading BSE data from {start_date} to {end_date}...")
         got = []
         cur = start_date
         while cur <= end_date:
-            if not cls.is_weekend(cur):
-                df = cls.fetch_bhav_for(cur)
+            if not self.is_weekend(cur):
+                df = self.fetch_bhav_for(cur)
                 if df is not None and len(df):
                     print(f"  bhav {cur} → {len(df)} stocks")
                     got.append(df)
@@ -124,4 +142,11 @@ class BSEDataFetcher:
         if not got:
             return pd.DataFrame()
 
-        return pd.concat(got, ignore_index=True)
+        combined = pd.concat(got, ignore_index=True)
+
+        # Cache it
+        print(f"💾 Caching data to: {cache_key}")
+        with open(cache_file, 'wb') as f:
+            pickle.dump(combined, f)
+
+        return combined

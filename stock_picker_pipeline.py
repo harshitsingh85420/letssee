@@ -102,12 +102,13 @@ class DataLoader:
         self.config = config
         self.memory = Memory(config.CACHE_DIR, verbose=0)
 
-        # Import the proven working BSE fetcher
+        # Import the proven working BSE fetcher with caching
         try:
             from bse_direct_loader import BSEDataFetcher
-            self.bse_fetcher = BSEDataFetcher()
+            cache_path = str(config.CACHE_DIR / 'bse')
+            self.bse_fetcher = BSEDataFetcher(cache_dir=cache_path)
             self.use_bse = True
-            log("✅ Using BSE official BhavCopy data (proven working code)")
+            log("✅ Using BSE official BhavCopy data with caching (proven working code)")
         except Exception as e:
             self.use_bse = False
             log(f"⚠️ BSE loader import failed: {e}, will try yfinance")
