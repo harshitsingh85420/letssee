@@ -15,7 +15,6 @@ from typing import List, Dict, Tuple, Optional
 
 import numpy as np
 import pandas as pd
-import yfinance as yf
 import lightgbm as lgb
 import requests
 from bs4 import BeautifulSoup
@@ -27,6 +26,13 @@ from joblib import Memory, Parallel, delayed
 from tqdm import tqdm
 
 # Optional imports
+try:
+    import yfinance as yf
+    YFINANCE_AVAILABLE = True
+except ImportError:
+    YFINANCE_AVAILABLE = False
+    print("⚠️ yfinance not available, will use BSE data only")
+
 try:
     from imblearn.over_sampling import SMOTE
     SMOTE_AVAILABLE = True
@@ -90,36 +96,168 @@ def log(message: str, level: str = 'INFO'):
 
 
 class DataLoader:
-    """Download and cache stock data"""
+    """Download and cache stock data using BSE official data"""
 
     def __init__(self, config: StockPickerConfig):
         self.config = config
         self.memory = Memory(config.CACHE_DIR, verbose=0)
 
+        # Import the proven working BSE fetcher
+        try:
+            from bse_direct_loader import BSEDataFetcher
+            self.bse_fetcher = BSEDataFetcher()
+            self.use_bse = True
+            log("✅ Using BSE official BhavCopy data (proven working code)")
+        except Exception as e:
+            self.use_bse = False
+            log(f"⚠️ BSE loader import failed: {e}, will try yfinance")
+
     def download_stock(self, symbol: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
         """Download single stock data"""
         try:
-            ticker = yf.Ticker(symbol)
-            df = ticker.history(start=start_date, end=end_date, auto_adjust=True)
+            if self.use_bse:
+                # BSE uses stock codes, try to get data by name
+                from datetime import datetime
+                start = datetime.strptime(start_date, '%Y-%m-%d').date()
+                end = datetime.strptime(end_date, '%Y-%m-%d').date()
 
-            if df.empty or len(df) < self.config.MIN_DATA_POINTS:
-                return None
+                # Fetch bhav data for date range
+                df = self.bse_loader.fetch_bhav_range(start, end)
 
-            df.columns = [col.lower() for col in df.columns]
-            df = df.reset_index()
-            df['date'] = pd.to_datetime(df['date'])
-            df = df[['date', 'open', 'high', 'low', 'close', 'volume']]
-            df = df.dropna()
+                # Clean symbol (remove .NS suffix)
+                clean_symbol = symbol.replace('.NS', '').replace('.BO', '')
 
-            return df
+                # Find stock by name
+                stock_df = df[df['SC_NAME'].str.contains(clean_symbol, case=False, na=False)]
+
+                if stock_df.empty:
+                    return None
+
+                # Get the most common SC_CODE for this symbol
+                sc_code = stock_df['SC_CODE'].mode()[0] if len(stock_df) > 0 else None
+                if sc_code is None:
+                    return None
+
+                # Filter for this specific stock code
+                stock_df = df[df['SC_CODE'] == sc_code].copy()
+
+                if len(stock_df) < self.config.MIN_DATA_POINTS:
+                    return None
+
+                # Rename columns to lowercase
+                stock_df = stock_df.rename(columns={
+                    'DATE': 'date',
+                    'Open': 'open',
+                    'High': 'high',
+                    'Low': 'low',
+                    'Close': 'close',
+                    'Volume': 'volume'
+                })
+
+                # Ensure required columns
+                stock_df = stock_df[['date', 'open', 'high', 'low', 'close', 'volume']].copy()
+                stock_df = stock_df.sort_values('date').reset_index(drop=True)
+                stock_df = stock_df.dropna()
+
+                return stock_df
+
+            else:
+                # Fallback to yfinance
+                if not YFINANCE_AVAILABLE:
+                    log(f"Cannot download {symbol}: yfinance not available", 'ERROR')
+                    return None
+
+                ticker = yf.Ticker(symbol)
+                df = ticker.history(start=start_date, end=end_date, auto_adjust=True)
+
+                if df.empty or len(df) < self.config.MIN_DATA_POINTS:
+                    return None
+
+                df.columns = [col.lower() for col in df.columns]
+                df = df.reset_index()
+                df['date'] = pd.to_datetime(df['date'])
+                df = df[['date', 'open', 'high', 'low', 'close', 'volume']]
+                df = df.dropna()
+
+                return df
+
         except Exception as e:
             log(f"Error downloading {symbol}: {str(e)}", 'ERROR')
             return None
 
     def download_multiple(self, symbols: List[str], start_date: str, end_date: str) -> Dict[str, pd.DataFrame]:
-        """Download multiple stocks in parallel"""
+        """Download multiple stocks - BSE fetches all at once for efficiency"""
         log(f"Downloading {len(symbols)} stocks...")
 
+        if self.use_bse:
+            try:
+                from datetime import datetime as dt
+                start = dt.strptime(start_date, '%Y-%m-%d').date()
+                end = dt.strptime(end_date, '%Y-%m-%d').date()
+
+                # Fetch all BSE data at once (much faster!) using proven code
+                log("Fetching BSE BhavCopy data (official source)...")
+                all_data = self.bse_fetcher.fetch_bhav_range(start, end)
+
+                if all_data.empty:
+                    log("❌ No BSE data fetched, falling back", 'WARNING')
+                    raise Exception("Empty BSE data")
+
+                log(f"✅ Fetched {len(all_data)} total records from BSE")
+
+                # Extract data for each symbol
+                stock_data = {}
+                for symbol in tqdm(symbols, desc="Processing stocks"):
+                    clean_symbol = symbol.replace('.NS', '').replace('.BO', '')
+
+                    # Find stock by name
+                    stock_df = all_data[all_data['SC_NAME'].str.contains(clean_symbol, case=False, na=False)]
+
+                    if stock_df.empty:
+                        continue
+
+                    # Get most common SC_CODE
+                    sc_code = stock_df['SC_CODE'].mode()[0] if len(stock_df) > 0 else None
+                    if sc_code is None:
+                        continue
+
+                    # Filter for this stock code
+                    stock_df = all_data[all_data['SC_CODE'] == sc_code].copy()
+
+                    if len(stock_df) < self.config.MIN_DATA_POINTS:
+                        continue
+
+                    # Rename columns
+                    stock_df = stock_df.rename(columns={
+                        'DATE': 'date',
+                        'Open': 'open',
+                        'High': 'high',
+                        'Low': 'low',
+                        'Close': 'close',
+                        'Volume': 'volume'
+                    })
+
+                    stock_df = stock_df[['date', 'open', 'high', 'low', 'close', 'volume']].copy()
+                    stock_df = stock_df.sort_values('date').reset_index(drop=True)
+                    stock_df = stock_df.dropna()
+
+                    stock_data[symbol] = stock_df
+
+                log(f"✅ Downloaded {len(stock_data)}/{len(symbols)} stocks from BSE")
+                return stock_data
+
+            except Exception as e:
+                log(f"BSE bulk download failed: {e}, falling back to yfinance", 'WARNING')
+                # Fall through to individual downloads
+
+        # Fallback: individual downloads with yfinance
+        if not YFINANCE_AVAILABLE:
+            log("❌ Cannot download stocks: neither BSE loader nor yfinance available", 'ERROR')
+            log("💡 Install with: pip install yfinance", 'INFO')
+            log("💡 Or ensure BSE data fetcher is working", 'INFO')
+            return {}
+
+        log("Using yfinance fallback...")
         results = Parallel(n_jobs=4)(
             delayed(self.download_stock)(symbol, start_date, end_date)
             for symbol in tqdm(symbols, desc="Downloading")
