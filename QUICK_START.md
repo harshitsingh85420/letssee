@@ -79,6 +79,17 @@ jupyter notebook
 
 ## ⚡ First Time Setup (5 Minutes)
 
+### **0. Install Packages (One Time)**
+
+```cmd
+pip install -r requirements.txt
+```
+
+**Or install directly:**
+```cmd
+pip install numpy pandas yfinance lightgbm scikit-learn requests beautifulsoup4 tqdm joblib imbalanced-learn python-dateutil pytz numba plotly
+```
+
 ### **1. Quick Test with 10 Stocks:**
 
 ```cmd

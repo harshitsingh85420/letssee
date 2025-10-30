@@ -58,6 +58,9 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 # 3. Install dependencies
 pip install -r requirements.txt
 
+# If that fails, install directly:
+# pip install numpy pandas yfinance lightgbm scikit-learn requests beautifulsoup4 tqdm joblib imbalanced-learn python-dateutil pytz numba plotly
+
 # 4. Run the system
 python run_stock_picker.py --mode predict
 ```
