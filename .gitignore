@@ -39,6 +39,10 @@ ENV/
 # Data and models (user-specific)
 stock_picker_data/
 
+# Logs
+*.log
+*.out
+
 # OS
 .DS_Store
 Thumbs.db
