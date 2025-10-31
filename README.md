@@ -52,7 +52,74 @@ python run_5session_picker.py
 
 # Or with more stocks for training:
 python run_5session_picker.py --stocks 500
+
+# 5. Backtest on historical dates (validate it works!)
+python run_backtest.py --start 2024-08-01 --end 2024-08-31
 ```
+
+---
+
+## 🧪 Backtesting (Validate Before Using!)
+
+**Run on past dates → see if picks actually closed positive in 5 sessions**
+
+```bash
+# Backtest on August 2024
+python run_backtest.py --start 2024-08-01 --end 2024-08-31
+
+# Backtest on specific dates
+python run_backtest.py --dates 2024-08-01 2024-08-15 2024-08-29
+
+# More stocks for better model
+python run_backtest.py --start 2024-07-01 --end 2024-09-30 --stocks 500
+```
+
+### What Backtesting Does
+
+For each historical date:
+1. ✅ Simulates running the system **only with data up to that date** (no lookahead!)
+2. ✅ Gets picks as if you ran it on that day
+3. ✅ Looks forward 5 sessions and checks actual outcome
+4. ✅ Counts: Positive, Negative, Flat
+5. ✅ Calculates: Win rate, average return, per-date breakdown
+
+### Example Backtest Output
+
+```
+📊 BACKTEST RESULTS SUMMARY
+================================================================================
+
+📈 Overall Performance:
+   Total picks: 234
+   Valid outcomes: 234
+   Positive: 152 (64.96%)
+   Negative: 78 (33.33%)
+   Flat: 4 (1.71%)
+   Win Rate: 64.96%
+   Avg Return: 1.87%
+   Median Return: 1.45%
+
+📅 Per-Date Breakdown:
+SignalDate    Total  Positive  Negative  WinRate
+2024-08-01      28        19         9    67.86
+2024-08-05      25        17         8    68.00
+2024-08-08      31        21        10    67.74
+...
+
+🏆 Top 10 Best Picks:
+SignalDate    SC_NAME      Close  Close_fwd5  Return_fwd5  Probability
+2024-08-01    TATASTEEL   125.50      142.30        13.39         0.78
+2024-08-05    RELIANCE   2456.50     2734.80        11.33         0.76
+...
+
+🎯 Probability Calibration:
+Probability Range    Count    WinRate    AvgReturn
+(0.65, 0.70]          45      71.11%       2.34%
+(0.60, 0.65]          89      66.29%       1.98%
+(0.55, 0.60]          100     61.00%       1.45%
+```
+
+**Recommendation:** Run backtest on 2-3 months of historical data before using for real trading!
 
 ---
 
@@ -246,8 +313,10 @@ Your original code had brilliant momentum/breakout rules (ADX ≥ 22, RS ≥ 0.8
 
 ```
 letssee/
-├── run_5session_picker.py       # Main entry point
+├── run_5session_picker.py       # Main entry point (daily predictions)
+├── run_backtest.py               # Backtest runner (validate on historical data)
 ├── stock_picker_5session.py     # Core pipeline (fetch, train, predict)
+├── backtest_5session.py          # Backtesting module
 ├── nse_bse_loader.py             # NSE→BSE data fetcher with caching
 ├── momentum_features.py          # Momentum/breakout feature engineering
 ├── requirements.txt              # Dependencies
@@ -255,7 +324,8 @@ letssee/
 └── stock_picker_data/
     ├── cache/                    # Cached NSE/BSE data & features
     ├── models/                   # Trained models
-    └── results/                  # Daily picks CSV files
+    ├── results/                  # Daily picks CSV files
+    └── backtest_results/         # Backtest results CSV files
 ```
 
 ---
@@ -299,7 +369,23 @@ self.THRESHOLD_STEP = 0.02       # Threshold adjustment step
 
 ---
 
-## 🧪 Daily Workflow
+## 🧪 Recommended Workflow
+
+### Step 1: Validate with Backtesting (First Time)
+
+```bash
+# Backtest on recent historical data
+python run_backtest.py --start 2024-08-01 --end 2024-09-30 --stocks 500
+
+# Check results:
+# - Win rate should be > 60%
+# - Average return should be positive
+# - Look at per-date consistency
+```
+
+**Only proceed to daily usage if backtest shows good results!**
+
+### Step 2: Daily Usage
 
 ```python
 # Monday morning:
