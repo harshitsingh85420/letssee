@@ -209,9 +209,9 @@ def generate_predictions(config: StockPickerConfig, predictor: LightGBMPredictor
 
     log(f"✅ Generated predictions for {len(predictions)} stocks")
 
-    # Step 5: Auto-threshold adjustment to get top 15 picks
+    # Step 5: Apply threshold to get ALL qualifying stocks
     log("\n" + "-"*70)
-    log("STEP 5: Auto-Threshold Adjustment (0.62→0.52)")
+    log("STEP 5: Finding ALL Qualifying Stocks")
     log("-"*70)
 
     predictions_df = pd.DataFrame(predictions)
@@ -222,47 +222,48 @@ def generate_predictions(config: StockPickerConfig, predictor: LightGBMPredictor
     log(f"   • Mean probability: {predictions_df['probability'].mean():.4f}")
     log(f"   • Min probability: {predictions_df['probability'].min():.4f}")
 
-    log(f"\n🎯 Searching for {config.TARGET_PICKS} picks (threshold: {config.INITIAL_THRESHOLD}→{config.MIN_THRESHOLD}):")
+    log(f"\n🎯 Finding ALL stocks above threshold (starts at {config.INITIAL_THRESHOLD}):")
 
-    # Auto-adjust threshold to get TARGET_PICKS (15)
+    # Find the highest threshold that gives us results
     threshold = config.INITIAL_THRESHOLD
     picks = pd.DataFrame()
+    final_threshold = config.MIN_THRESHOLD
 
     while threshold >= config.MIN_THRESHOLD:
         picks_at_threshold = predictions_df[predictions_df['probability'] >= threshold].copy()
-        status = "✅" if len(picks_at_threshold) >= config.TARGET_PICKS else "🔍"
-        log(f"   {status} Threshold {threshold:.2f}: {len(picks_at_threshold)} stocks")
+        log(f"   📊 Threshold {threshold:.2f}: {len(picks_at_threshold)} stocks qualify")
 
-        if len(picks_at_threshold) >= config.TARGET_PICKS:
+        # Use the highest threshold that gives us at least 1 stock
+        if len(picks_at_threshold) > 0 and picks.empty:
             picks = picks_at_threshold
             final_threshold = threshold
-            break
 
         threshold -= config.THRESHOLD_STEP
 
-    # If we didn't find enough, use min threshold
-    if picks.empty or len(picks) < config.TARGET_PICKS:
+    # If still no picks, use min threshold
+    if picks.empty:
+        picks = predictions_df[predictions_df['probability'] >= config.MIN_THRESHOLD].copy()
         final_threshold = config.MIN_THRESHOLD
-        picks = predictions_df[predictions_df['probability'] >= final_threshold].copy()
 
-    log(f"\n✅ Final threshold: {final_threshold:.2f} with {len(picks)} candidate stocks")
+    log(f"\n✅ Final threshold: {final_threshold:.2f}")
+    log(f"✅ Total qualifying stocks: {len(picks)} (from penny to expensive, all volumes)")
 
-    # Get top 15 picks
-    picks = picks.sort_values('probability', ascending=False).head(config.TARGET_PICKS)
+    # Sort by probability (NO limit on number of picks)
+    picks = picks.sort_values('probability', ascending=False)
     picks['rank'] = range(1, len(picks) + 1)
 
     # Step 6: Display and save
     log("\n" + "="*80)
-    log("🏆 TOP {0} STOCK PICKS FOR {1}".format(len(picks), datetime.now().strftime('%Y-%m-%d')))
+    log("🏆 ALL {0} QUALIFYING STOCKS FOR {1}".format(len(picks), datetime.now().strftime('%Y-%m-%d')))
     log("="*80)
 
     # Summary statistics
-    log(f"\n📊 Pick Statistics:")
-    log(f"   • Total picks: {len(picks)}")
+    log(f"\n📊 Qualifying Stocks Statistics:")
+    log(f"   • Total qualifying stocks: {len(picks)} (could be any number!)")
     log(f"   • Average probability: {picks['probability'].mean():.4f}")
-    log(f"   • Top pick probability: {picks['probability'].iloc[0]:.4f}")
-    log(f"   • Lowest pick probability: {picks['probability'].iloc[-1]:.4f}")
-    log(f"   • Price range: ₹{picks['last_close'].min():.2f} to ₹{picks['last_close'].max():.2f}")
+    log(f"   • Highest probability: {picks['probability'].iloc[0]:.4f}")
+    log(f"   • Lowest probability: {picks['probability'].iloc[-1]:.4f}")
+    log(f"   • Price range: ₹{picks['last_close'].min():.2f} to ₹{picks['last_close'].max():.2f} (all included!)")
     log(f"   • Average price: ₹{picks['last_close'].mean():.2f}")
     log(f"   • Average 5D return: {picks['return_5d'].mean():.2f}%")
 
@@ -291,8 +292,9 @@ def generate_predictions(config: StockPickerConfig, predictor: LightGBMPredictor
     log("="*80)
     log(f"📊 Scanned: {len(universe)} stocks (3000+ NSE/BSE stocks)")
     log(f"✅ Generated predictions: {len(predictions)} stocks")
-    log(f"🎯 Top picks: {len(picks)} stocks (auto-threshold: {final_threshold:.2f})")
-    log(f"📊 Filters applied: ASM/GSM, F&O ban, liquidity, price range")
+    log(f"🎯 Qualifying stocks: {len(picks)} (threshold: {final_threshold:.2f})")
+    log(f"📊 Filters: F&O ban, ASM/GSM only (NO price/volume limits)")
+    log(f"💡 Includes: Penny stocks to expensive, low to high volume - ALL")
     log(f"⚠️  Note: This is for educational purposes only. Always do your own research!")
     log("="*80)
 
@@ -301,19 +303,19 @@ def generate_predictions(config: StockPickerConfig, predictor: LightGBMPredictor
 
 def main():
     parser = argparse.ArgumentParser(
-        description='5-Session Stock Picker - Production System\n\n'
+        description='5-Session Stock Picker - Daily Learning System\n\n'
                     'KEY FEATURES:\n'
                     '🎯 Processes 3000+ NSE/BSE stocks daily\n'
                     '🎯 Predicts ≥1.5% gains over next 5 sessions\n'
-                    '🎯 Generates top 15 picks with probability scores\n'
-                    '🎯 Auto-adjusts threshold (0.62→0.52) for optimal picks\n'
-                    '🎯 LightGBM with proper time-series cross-validation\n'
-                    '🎯 Comprehensive risk filters (ASM/GSM/F&O ban/liquidity)\n'
-                    '🎯 Full backtesting with realistic Indian costs\n',
+                    '🎯 Shows ALL qualifying stocks (not limited to 15)\n'
+                    '🎯 Includes penny to expensive stocks (no price limits)\n'
+                    '🎯 Daily retraining with latest data\n'
+                    '🎯 Minimal filters (F&O ban, ASM/GSM only)\n'
+                    '🎯 Everything cached (BSE data, features, model)\n',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument('--mode', choices=['train', 'predict', 'both', 'daily', 'backtest'], default='predict',
-                       help='Mode: train, predict, both/daily (retrain+predict), backtest')
+    parser.add_argument('--mode', choices=['train', 'predict', 'both', 'daily'], default='daily',
+                       help='Mode: daily (recommended), predict (use saved model), train (train only)')
     parser.add_argument('--stocks', type=int, default=200,
                        help='Number of stocks for training (default: 200, use 500+ for best model)')
     parser.add_argument('--data-dir', type=str, default='./stock_picker_data',
@@ -325,14 +327,15 @@ def main():
         args.mode = 'both'
 
     print("="*80)
-    print("🎯 5-SESSION STOCK PICKER - PRODUCTION SYSTEM")
+    print("🎯 5-SESSION STOCK PICKER - DAILY LEARNING SYSTEM")
     print("="*80)
     print("\n📋 System Features:")
     print("   🎯 Processes 3000+ NSE/BSE stocks daily")
     print("   🎯 Predicts ≥1.5% gains over next 5 sessions")
-    print("   🎯 Generates top 15 picks with probability scores")
-    print("   🎯 Auto-adjusts threshold (0.62→0.52)")
-    print("   🎯 Comprehensive risk filters (ASM/GSM/F&O ban/liquidity)")
+    print("   🎯 Shows ALL qualifying stocks (no limits!)")
+    print("   🎯 Includes: Penny to expensive, low to high volume")
+    print("   🎯 Daily retraining - model learns continuously")
+    print("   🎯 Everything cached - 10x faster after first run")
     print("\n📅 Today's Date: " + datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     print(f"🔧 Mode: {args.mode}")
     print(f"📁 Data directory: {args.data_dir}")

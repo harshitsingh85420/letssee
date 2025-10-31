@@ -10,15 +10,16 @@
 
 - 🎯 Processes **3000+ NSE/BSE stocks** daily
 - 🎯 Predicts ≥1.5% gains over next 5 sessions
-- 🎯 Generates **top 15 picks** with probability scores
-- 🎯 **Auto-adjusts threshold** (0.62→0.52) for optimal picks
+- 🎯 Shows **ALL qualifying stocks** (not limited to 15!)
+- 🎯 Includes **penny to expensive** stocks (no price limits)
+- 🎯 **Daily retraining** - model learns continuously from latest data
 - 🎯 **LightGBM** with proper time-series cross-validation
-- 🎯 Comprehensive risk filters (ASM/GSM/F&O ban/liquidity)
+- 🎯 **Minimal filters** (F&O ban, ASM/GSM only - no price/volume limits)
 - 🎯 Full backtesting with realistic Indian costs
-- 🎯 **Intelligent 3-layer caching** (10x faster subsequent runs)
-- 🎯 **Daily retraining mode** for continuous learning
+- 🎯 **Everything cached** - BSE data, features, model (10x faster!)
+- 🎯 Model adapts daily - learns what actually works
 
-**Status:** ✅ Production Ready - All Features Implemented
+**Status:** ✅ Production Ready - Continuous Learning System
 
 ---
 
@@ -37,11 +38,10 @@ git checkout claude/indian-equity-trading-system-011CUX7MGPY37GwYWmG29cb6
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Train model (first time)
-python run_stock_picker.py --mode train --stocks 200
+# 4. Run daily (recommended - retrains + predicts)
+python run_stock_picker.py --mode daily --stocks 200
 
-# 5. Generate daily picks
-python run_stock_picker.py --mode predict
+# Or just: python run_stock_picker.py (daily is default!)
 ```
 
 ### ☁️ Google Colab (Quick Testing)
@@ -52,31 +52,31 @@ Click the "Open in Colab" badge above and run all cells!
 
 ## 📋 Usage
 
-### Daily Picks (Using Saved Model)
+### Daily Mode (Recommended - Default)
+```bash
+python run_stock_picker.py
+# Or explicitly: python run_stock_picker.py --mode daily --stocks 200
+```
+- Retrains model with TODAY's data
+- Model learns what actually worked in the past
+- Shows ALL qualifying stocks (could be 10, could be 100+!)
+- Everything cached after first run
+- Time: 15-20 minutes (first run), 3-5 minutes (cached)
+
+**Why daily retraining?**
+- Model learns from latest market data
+- Adapts to changing conditions
+- Self-corrects if patterns stop working
+- Uses real BSE data up to TODAY
+
+### Quick Prediction (Use Saved Model)
 ```bash
 python run_stock_picker.py --mode predict
 ```
-- Loads trained model
-- Scans 3000+ stocks
-- Generates top 15 picks
-- Time: 2-3 minutes (with cache)
-
-### Train New Model
-```bash
-python run_stock_picker.py --mode train --stocks 200
-```
-- Trains on 200 stocks
-- Saves model for daily use
-- Time: 10-15 minutes (first run)
-
-### Daily Mode (Retrain + Predict)
-```bash
-python run_stock_picker.py --mode daily --stocks 200
-```
-- Retrains model with latest data
-- Generates fresh picks
-- Model adapts daily
-- Time: 15-20 minutes (first run), 5-10 minutes (cached)
+- Uses yesterday's model (faster)
+- Good for quick checks
+- Time: 2-3 minutes
+- **Note:** Model doesn't learn new patterns
 
 ### Backtesting
 ```bash
@@ -92,52 +92,63 @@ python backtesting.py
 
 ```
 ================================================================================
-🎯 5-SESSION STOCK PICKER - PRODUCTION SYSTEM
+🎯 5-SESSION STOCK PICKER - DAILY LEARNING SYSTEM
 ================================================================================
 
 📋 System Features:
    🎯 Processes 3000+ NSE/BSE stocks daily
    🎯 Predicts ≥1.5% gains over next 5 sessions
-   🎯 Generates top 15 picks with probability scores
-   🎯 Auto-adjusts threshold (0.62→0.52)
-   🎯 Comprehensive risk filters (ASM/GSM/F&O ban/liquidity)
+   🎯 Shows ALL qualifying stocks (no limits!)
+   🎯 Includes: Penny to expensive, low to high volume
+   🎯 Daily retraining - model learns continuously
 
 ----------------------------------------------------------------------
 STEP 3: Applying Risk Filters
 ----------------------------------------------------------------------
 F&O ban filter: Excluded 12 stocks
 ASM/GSM filter: Excluded 45 stocks
-Liquidity filter (≥₹20L): 1834/2790 passed
-Price filter (₹10-₹50000): 1789/1834 passed
-✅ Final universe after all filters: 1789 stocks
+✅ Final universe: 2833 stocks (all prices, all volumes)
 
 ----------------------------------------------------------------------
-STEP 5: Auto-Threshold Adjustment (0.62→0.52)
+STEP 5: Finding ALL Qualifying Stocks
 ----------------------------------------------------------------------
-🎯 Searching for 15 picks (threshold: 0.62→0.52):
-   🔍 Threshold 0.62: 8 stocks
-   🔍 Threshold 0.60: 12 stocks
-   ✅ Threshold 0.58: 17 stocks
+📊 Probability distribution:
+   • Max probability: 0.7842
+   • Mean probability: 0.4523
 
-✅ Final threshold: 0.58 with 17 candidate stocks
+🎯 Finding ALL stocks above threshold (starts at 0.62):
+   📊 Threshold 0.62: 37 stocks qualify
+   📊 Threshold 0.60: 52 stocks qualify
+   📊 Threshold 0.58: 71 stocks qualify
+
+✅ Final threshold: 0.62
+✅ Total qualifying stocks: 37 (from penny to expensive, all volumes)
 
 ================================================================================
-🏆 TOP 15 STOCK PICKS FOR 2025-10-30
+🏆 ALL 37 QUALIFYING STOCKS FOR 2025-10-30
 ================================================================================
 
-Rank  Symbol         Probability    Price       5D Return%
-1     RELIANCE.NS    0.7842        ₹2456.50    3.21
-2     TCS.NS         0.7512        ₹3678.20    2.87
-3     BAJFINANCE.NS  0.7234        ₹7234.20    1.92
+📊 Qualifying Stocks Statistics:
+   • Total qualifying stocks: 37 (could be any number!)
+   • Price range: ₹8.50 to ₹12,456.50 (all included!)
+
+Rank  Symbol            Probability    Price       5D Return%
+1     RELIANCE.NS       0.7842        ₹2456.50    3.21
+2     TCS.NS            0.7512        ₹3678.20    2.87
+3     PENNYSTOCK.NS     0.7234        ₹8.50       12.45
 ...
-15    LTIM.NS        0.5801        ₹5234.50    1.98
+37    EXPENSIVE.NS      0.6201        ₹12,456.50  1.98
 
-💾 Results saved to: ./stock_picker_data/results/picks_2025-10-30.csv
+✅ Qualifying stocks: 37 (threshold: 0.62)
+📊 Filters: F&O ban, ASM/GSM only (NO price/volume limits)
+💡 Includes: Penny stocks to expensive, low to high volume - ALL
 ```
 
 ---
 
 ## 🛡️ Risk Filters
+
+**Minimal filtering approach - includes ALL price ranges and volumes!**
 
 ### 1. ASM/GSM Surveillance
 - Excludes stocks under Additional Surveillance Measure (ASM)
@@ -148,14 +159,10 @@ Rank  Symbol         Probability    Price       5D Return%
 - Excludes stocks currently in F&O ban
 - Fetched from NSE archives
 
-### 3. Liquidity Filter
-- Minimum average turnover: ₹20 lakh
-- Calculated over last 20 trading days
-
-### 4. Price Range Filter
-- Minimum price: ₹10
-- Maximum price: ₹50,000
-- Filters out extreme price ranges
+**Note:** No price or liquidity filters applied! System includes:
+- **All price ranges**: Penny stocks (₹1) to expensive (₹50,000+)
+- **All volume levels**: Low volume to high volume stocks
+- **Rationale**: Let the ML model learn which stocks actually work, regardless of price/volume
 
 ---
 
@@ -221,16 +228,15 @@ Edit `stock_picker_pipeline.py` → `StockPickerConfig`:
 
 ```python
 # Prediction parameters
-self.TARGET_GAIN = 1.5      # Target gain %
-self.HOLDING_PERIOD = 5     # Holding period (sessions)
-self.TARGET_PICKS = 15      # Number of picks
-self.INITIAL_THRESHOLD = 0.62
-self.MIN_THRESHOLD = 0.52
+self.TARGET_GAIN = 1.5          # Target gain %
+self.HOLDING_PERIOD = 5         # Holding period (sessions)
+self.INITIAL_THRESHOLD = 0.62   # Starting threshold
+self.MIN_THRESHOLD = 0.52       # Minimum threshold
+self.THRESHOLD_STEP = 0.02      # Threshold adjustment step
 
-# Risk filters
-self.MIN_LIQUIDITY = 2000000  # ₹20 lakh
-self.MIN_PRICE = 10
-self.MAX_PRICE = 50000
+# Note: No TARGET_PICKS limit - shows ALL qualifying stocks!
+# Note: No price or liquidity filters - includes all stocks from penny to expensive
+# Risk filters: Only F&O ban and ASM/GSM surveillance
 ```
 
 ---
