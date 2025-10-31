@@ -65,15 +65,13 @@ class StockPickerConfig:
         # Prediction parameters
         self.TARGET_GAIN = 1.5  # Minimum gain % over 5 sessions
         self.HOLDING_PERIOD = 5  # Trading sessions
-        self.TARGET_PICKS = 15  # Top 15 picks
+        # No TARGET_PICKS - show ALL stocks that pass criteria
         self.INITIAL_THRESHOLD = 0.62
         self.MIN_THRESHOLD = 0.52
         self.THRESHOLD_STEP = 0.02
 
-        # Risk filters
-        self.MIN_LIQUIDITY = 2000000  # ₹20 lakh minimum turnover
-        self.MIN_PRICE = 10
-        self.MAX_PRICE = 50000
+        # Risk filters - minimal filtering (F&O ban and ASM/GSM only)
+        # No price or liquidity filters - include all stocks from penny to expensive
 
         # Data parameters
         self.LOOKBACK_DAYS = 730  # 2 years
@@ -356,8 +354,8 @@ class RiskFilters:
 
     @classmethod
     def apply_all(cls, stock_data: Dict, config: StockPickerConfig):
-        """Apply comprehensive risk filters"""
-        log("Applying comprehensive risk filters...")
+        """Apply minimal risk filters (F&O ban and ASM/GSM only)"""
+        log("Applying risk filters (F&O ban, ASM/GSM)...")
         initial_count = len(stock_data)
 
         # F&O ban
@@ -373,17 +371,8 @@ class RiskFilters:
             stock_data = {s: df for s, df in stock_data.items() if s not in surveillance}
             log(f"ASM/GSM filter: Excluded {before - len(stock_data)} stocks")
 
-        # Liquidity
-        before = len(stock_data)
-        stock_data = cls.apply_liquidity_filter(stock_data, config.MIN_LIQUIDITY)
-        log(f"Liquidity filter (≥₹{config.MIN_LIQUIDITY/100000:.0f}L): {len(stock_data)}/{before} passed")
-
-        # Price range
-        before = len(stock_data)
-        stock_data = cls.apply_price_filter(stock_data, config.MIN_PRICE, config.MAX_PRICE)
-        log(f"Price filter (₹{config.MIN_PRICE}-₹{config.MAX_PRICE}): {len(stock_data)}/{before} passed")
-
-        log(f"✅ Final universe after all filters: {len(stock_data)} stocks")
+        # Note: No liquidity or price filters - include ALL stocks
+        log(f"✅ Final universe: {len(stock_data)} stocks (all prices, all volumes)")
         return stock_data
 
 
