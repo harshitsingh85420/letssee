@@ -12,7 +12,7 @@ from datetime import date, timedelta
 from typing import List, Tuple
 from pathlib import Path
 
-from nse_bse_loader import NSEBSEDataFetcher
+from bse_loader import BSEDataFetcher
 from momentum_features import prepare_features_all, add_forward_returns
 from stock_picker_5session import StockPicker5Session
 
@@ -24,7 +24,7 @@ class Backtester5Session:
 
     def __init__(self, picker: StockPicker5Session):
         self.picker = picker
-        self.fetcher = NSEBSEDataFetcher()
+        self.fetcher = BSEDataFetcher()
 
     def backtest_on_dates(self, signal_dates: List[date], n_stocks: int = 200) -> pd.DataFrame:
         """

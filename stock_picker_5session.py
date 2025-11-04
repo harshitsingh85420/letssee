@@ -3,7 +3,7 @@
 
 Intention:
 - Run today → tells which stocks to buy tomorrow → expects positive close in 5 sessions
-- Uses NSE data (priority) → BSE data (fallback)
+- Uses BSE official BhavCopy data
 - ML model learns which momentum/breakout patterns lead to 5-session gains
 - Shows ALL qualifying stocks (no arbitrary limit)
 - Daily retraining - model learns continuously
@@ -22,7 +22,7 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import roc_auc_score, accuracy_score
 
 # Import our modules
-from nse_bse_loader import NSEBSEDataFetcher
+from bse_loader import BSEDataFetcher
 from momentum_features import prepare_features_all, add_forward_returns
 
 
@@ -49,7 +49,7 @@ class StockPicker5Session:
         self.THRESHOLD_STEP = 0.02  # Threshold adjustment step
 
         # Initialize data fetcher
-        self.fetcher = NSEBSEDataFetcher()
+        self.fetcher = BSEDataFetcher()
 
         # Model will be set during training
         self.model = None

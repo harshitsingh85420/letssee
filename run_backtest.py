@@ -20,7 +20,7 @@ from datetime import date, timedelta
 from typing import List
 
 from backtest_5session import run_backtest
-from nse_bse_loader import NSEBSEDataFetcher
+from bse_loader import BSEDataFetcher
 
 
 def generate_signal_dates(start_date: date, end_date: date, interval_days: int = 3) -> List[date]:
@@ -28,7 +28,7 @@ def generate_signal_dates(start_date: date, end_date: date, interval_days: int =
     Generate signal dates between start and end with specified interval
     Skips weekends
     """
-    fetcher = NSEBSEDataFetcher()
+    fetcher = BSEDataFetcher()
     dates = []
     current = start_date
 

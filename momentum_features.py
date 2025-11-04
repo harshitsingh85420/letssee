@@ -312,13 +312,13 @@ def add_forward_returns(df: pd.DataFrame, periods: list = [5]) -> pd.DataFrame:
 
 # Test
 if __name__ == "__main__":
-    from nse_bse_loader import NSEBSEDataFetcher
+    from bse_loader import BSEDataFetcher
     from datetime import date, timedelta
 
     print("Testing momentum/breakout feature engineering...")
 
     # Fetch some data
-    fetcher = NSEBSEDataFetcher()
+    fetcher = BSEDataFetcher()
     end_d = fetcher.prev_bday(date.today())
     start_d = end_d - timedelta(days=100)
 
