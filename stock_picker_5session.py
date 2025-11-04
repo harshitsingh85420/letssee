@@ -219,15 +219,47 @@ class StockPicker5Session:
         for idx, row in importance.head(10).iterrows():
             print(f"   {row['feature']:20s} : {row['importance']:.1f}")
 
-        # Save model
+        # Save model with complete metadata
         model_path = self.models_dir / "model_5session.pkl"
+
+        # Prepare comprehensive save package
+        save_package = {
+            # Model
+            'model': self.model,
+            'feature_cols': self.feature_cols,
+
+            # Configuration
+            'config': {
+                'LOOKBACK_DAYS': self.LOOKBACK_DAYS,
+                'FORWARD_PERIOD': self.FORWARD_PERIOD,
+                'MIN_DATA_POINTS': self.MIN_DATA_POINTS,
+                'INITIAL_THRESHOLD': self.INITIAL_THRESHOLD,
+                'MIN_THRESHOLD': self.MIN_THRESHOLD,
+                'THRESHOLD_STEP': self.THRESHOLD_STEP,
+            },
+
+            # Training metadata
+            'metadata': {
+                'train_date': date.today(),
+                'cv_scores': cv_scores,
+                'cv_mean': np.mean(cv_scores),
+                'cv_std': np.std(cv_scores),
+                'n_training_samples': len(X),
+                'n_features': len(self.feature_cols),
+                'feature_importance': importance.to_dict('records'),
+            },
+
+            # Data statistics
+            'data_stats': {
+                'positive_ratio': y.mean(),
+                'negative_ratio': 1 - y.mean(),
+                'total_samples': len(y),
+            }
+        }
+
         with open(model_path, 'wb') as f:
-            pickle.dump({
-                'model': self.model,
-                'feature_cols': self.feature_cols,
-                'train_date': date.today()
-            }, f)
-        print(f"\n💾 Model saved to: {model_path}")
+            pickle.dump(save_package, f)
+        print(f"\n💾 Model + Config + Metadata saved to: {model_path}")
 
     def predict(self, features_df: pd.DataFrame) -> pd.DataFrame:
         """

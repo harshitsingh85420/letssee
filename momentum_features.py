@@ -4,6 +4,10 @@ Based on original rule-based screening logic
 Features focus on trend strength, breakouts, volume surges, and relative strength
 """
 
+import os
+import pickle
+import hashlib
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from typing import Tuple
@@ -200,18 +204,40 @@ def compute_weekly_features(gsym: pd.DataFrame) -> pd.DataFrame:
     return wk[["W_BBWidth", "W_TrendOK", "W_Date"]]
 
 
-def prepare_features_all(bhav: pd.DataFrame) -> pd.DataFrame:
+def prepare_features_all(bhav: pd.DataFrame, cache_dir: str = "./stock_picker_data/cache/features") -> pd.DataFrame:
     """
-    Main feature engineering function
+    Main feature engineering function with caching
     Computes all momentum/breakout features from the original code
 
     Args:
         bhav: Raw BhavCopy data with columns [SC_CODE, SC_NAME, Open, High, Low, Close, Volume, ValueTraded, DATE]
+        cache_dir: Directory for feature cache
 
     Returns:
         DataFrame with all features computed
     """
-    print("🔧 Computing momentum/breakout features...")
+    # ========== CHECK CACHE ==========
+    cache_path = Path(cache_dir)
+    cache_path.mkdir(parents=True, exist_ok=True)
+
+    # Create cache key from data characteristics
+    min_date = bhav['DATE'].min()
+    max_date = bhav['DATE'].max()
+    n_stocks = bhav['SC_CODE'].nunique()
+    n_rows = len(bhav)
+
+    cache_key = f"features_{min_date}_{max_date}_{n_stocks}_{n_rows}.pkl"
+    cache_file = cache_path / cache_key
+
+    # Try to load from cache
+    if cache_file.exists():
+        print(f"✅ Loading features from cache: {cache_key}")
+        print(f"   (Saves 10-15 minutes of computation!)")
+        with open(cache_file, 'rb') as f:
+            return pickle.load(f)
+
+    print("🔧 Computing momentum/breakout features (not cached)...")
+    print(f"   This will take 10-15 minutes but will be cached for future runs...")
     df = bhav.sort_values(["SC_CODE", "DATE"]).copy()
 
     # ========== STEP 1: Per-symbol features ==========
@@ -275,7 +301,17 @@ def prepare_features_all(bhav: pd.DataFrame) -> pd.DataFrame:
 
     print(f"✅ Features computed: {len(df):,} rows | {df['SC_CODE'].nunique()} stocks")
 
-    return df.sort_values(["SC_CODE", "DATE"]).reset_index(drop=True)
+    # ========== SAVE TO CACHE ==========
+    result = df.sort_values(["SC_CODE", "DATE"]).reset_index(drop=True)
+    try:
+        with open(cache_file, 'wb') as f:
+            pickle.dump(result, f, protocol=pickle.HIGHEST_PROTOCOL)
+        print(f"💾 Features cached to: {cache_key}")
+        print(f"   Next run will be 10-15 minutes faster!")
+    except Exception as e:
+        print(f"⚠️ Cache save failed: {e}")
+
+    return result
 
 
 def add_forward_returns(df: pd.DataFrame, periods: list = [5]) -> pd.DataFrame:
