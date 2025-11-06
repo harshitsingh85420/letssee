@@ -30,8 +30,16 @@ def main():
     parser.add_argument(
         '--stocks',
         type=int,
-        default=200,
-        help='Number of most liquid stocks to use for training (default: 200, use 500+ for best results)'
+        default=None,
+        help='Number of most liquid stocks to use for training (default: None = ALL stocks). '
+             'Examples: --stocks 200, --stocks 500, --stocks 1000'
+    )
+
+    parser.add_argument(
+        '--all',
+        action='store_true',
+        dest='all_stocks',
+        help='Train on ALL stocks (same as omitting --stocks)'
     )
 
     parser.add_argument(
@@ -42,8 +50,11 @@ def main():
 
     args = parser.parse_args()
 
+    # Handle --all flag (overrides --stocks)
+    n_stocks = None if args.all_stocks else args.stocks
+
     # Run daily mode
-    run_daily(n_stocks=args.stocks, use_existing_model=not args.retrain)
+    run_daily(n_stocks=n_stocks, use_existing_model=not args.retrain)
 
 
 if __name__ == "__main__":

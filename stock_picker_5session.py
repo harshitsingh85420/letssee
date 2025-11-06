@@ -104,15 +104,18 @@ class StockPicker5Session:
         model_path = self.models_dir / "model_5session.pkl"
         return model_path.exists()
 
-    def fetch_data(self, n_stocks: int = 200) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def fetch_data(self, n_stocks: int = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
-        Fetch raw BhavCopy data from NSE→BSE
+        Fetch raw BhavCopy data from BSE
+
+        Args:
+            n_stocks: Number of stocks to use for training (None = ALL stocks)
 
         Returns:
             (raw_bhav, features_with_labels)
         """
         print("\n" + "=" * 80)
-        print("📥 STEP 1: FETCH NSE/BSE DATA")
+        print("📥 STEP 1: FETCH BSE DATA")
         print("=" * 80)
 
         # Date range
@@ -121,7 +124,7 @@ class StockPicker5Session:
 
         print(f"Date range: {start_date} → {end_date}")
 
-        # Fetch bhav data (tries NSE first, falls back to BSE)
+        # Fetch bhav data
         bhav = self.fetcher.fetch_bhav_range(start_date, end_date)
 
         print(f"✅ Fetched {len(bhav):,} rows | {bhav['SC_CODE'].nunique()} unique stocks")
@@ -129,16 +132,21 @@ class StockPicker5Session:
         # Get stock universe (stocks with enough data)
         qualified_stocks = self.fetcher.get_stock_universe(bhav, self.MIN_DATA_POINTS)
 
+        # Filter to qualified stocks first
+        bhav_qualified = bhav[bhav['SC_CODE'].isin(qualified_stocks)].copy()
+
         # Limit to top N most liquid stocks for training (but predict on all)
-        if n_stocks and n_stocks < len(qualified_stocks):
+        if n_stocks and n_stocks > 0 and n_stocks < len(qualified_stocks):
             print(f"📊 Limiting training to top {n_stocks} most liquid stocks...")
             # Calculate average turnover per stock
-            liquidity = bhav.groupby('SC_CODE')['ValueTraded'].mean().sort_values(ascending=False)
+            liquidity = bhav_qualified.groupby('SC_CODE')['ValueTraded'].mean().sort_values(ascending=False)
             top_stocks = liquidity.head(n_stocks).index.tolist()
-            bhav_train = bhav[bhav['SC_CODE'].isin(top_stocks)].copy()
+            bhav_train = bhav_qualified[bhav_qualified['SC_CODE'].isin(top_stocks)].copy()
             print(f"   Training universe: {len(top_stocks)} stocks")
         else:
-            bhav_train = bhav.copy()
+            bhav_train = bhav_qualified.copy()
+            print(f"📊 Training on ALL qualified stocks: {len(qualified_stocks)} stocks")
+            print(f"   (Using every stock with enough data - comprehensive mode!)")
 
         # Compute features
         print("\n" + "=" * 80)
@@ -419,12 +427,12 @@ class StockPicker5Session:
         return csv_path
 
 
-def run_daily(n_stocks: int = 200, use_existing_model: bool = True):
+def run_daily(n_stocks: int = None, use_existing_model: bool = True):
     """
     Daily mode: Fetch data, optionally train model, predict, show ALL qualifying stocks
 
     Args:
-        n_stocks: Number of most liquid stocks to use for training
+        n_stocks: Number of most liquid stocks to use for training (None = ALL stocks)
         use_existing_model: If True, use existing model instead of retraining (faster!)
     """
     print("\n" + "=" * 80)

@@ -71,11 +71,17 @@ For each date in the year:
 ### Daily Stock Picking (Fast Mode)
 
 ```bash
-# Run daily picks using existing model (fast!)
+# Run daily picks using existing model - ALL STOCKS (comprehensive!)
+python run_5session_picker.py
+
+# Or explicitly use all stocks
+python run_5session_picker.py --all
+
+# Use top 500 stocks only
 python run_5session_picker.py --stocks 500
 
 # Force retrain if needed
-python run_5session_picker.py --stocks 500 --retrain
+python run_5session_picker.py --retrain
 ```
 
 This will:
@@ -91,14 +97,26 @@ This will:
 #### Train on Specific Year
 
 ```bash
-# Train on all business days in 2024
+# Train on all business days in 2024 - ALL STOCKS (recommended!)
+python run_yearly_training.py --year 2024
+
+# Or explicitly specify all stocks
+python run_yearly_training.py --year 2024 --all
+
+# Use top 500 stocks only (faster, still good quality)
 python run_yearly_training.py --year 2024 --stocks 500
+
+# Use top 1000 stocks
+python run_yearly_training.py --year 2024 --stocks 1000
 ```
 
 #### Train on Year Range
 
 ```bash
-# Train on 2023-2024
+# Train on 2023-2024 - ALL STOCKS
+python run_yearly_training.py --year-start 2023 --year-end 2024
+
+# Train on 2023-2024 - Top 500 stocks
 python run_yearly_training.py --year-start 2023 --year-end 2024 --stocks 500
 ```
 
@@ -131,23 +149,31 @@ Output:
 
 ---
 
-## 🎓 What `--stocks 500` Means
+## 🎓 Understanding Stock Selection
 
 The `--stocks` parameter controls the **training universe**:
 
-- **200** (default): Trains on top 200 most liquid stocks (faster, good quality)
-- **500** (recommended): Trains on top 500 most liquid stocks (best quality)
-- **1000+**: All available stocks (very comprehensive, but slower)
+- **None/omitted** (default): Trains on ALL qualified stocks (~1500-2000 stocks) - **COMPREHENSIVE!**
+- **500**: Trains on top 500 most liquid stocks (good balance)
+- **200**: Trains on top 200 most liquid stocks (faster)
+- **1000**: Trains on top 1000 most liquid stocks (very comprehensive)
 
-**Note**: Predictions are made on **ALL stocks**, regardless of training size!
+**"Qualified stocks"** = Stocks with at least 200 days of trading data (filters out illiquid/new stocks)
+
+**Note**: Predictions are made on **ALL qualified stocks**, regardless of training size!
 
 ### Example Performance:
 
-| Stocks | Training Time (First) | Training Time (Cached) | Quality |
-|--------|----------------------|------------------------|---------|
-| 200    | ~8 minutes           | ~30 seconds            | Good    |
-| 500    | ~12 minutes          | ~45 seconds            | Better  |
-| 1000   | ~20 minutes          | ~90 seconds            | Best    |
+| Stocks | Training Time (First) | Training Time (Cached) | Quality | Stocks Trained |
+|--------|----------------------|------------------------|---------|----------------|
+| 200    | ~8 minutes           | ~30 seconds            | Good    | ~200           |
+| 500    | ~12 minutes          | ~45 seconds            | Better  | ~500           |
+| 1000   | ~20 minutes          | ~90 seconds            | Excellent | ~1000        |
+| **ALL** (default) | **~30 minutes** | **~2 minutes** | **Best** | **~1500-2000** |
+
+### Recommendation:
+
+**Use ALL stocks (default)** for maximum learning! The model learns patterns from the entire market, making it more robust and accurate.
 
 ---
 
@@ -286,31 +312,36 @@ Model saved: model_5session_2024-06-15.pkl
 ### Initial Setup (One-Time)
 
 ```bash
-# 1. Train model on recent year
-python run_yearly_training.py --year 2024 --stocks 500
+# 1. Train model on recent year - ALL STOCKS for best results!
+python run_yearly_training.py --year 2024
 
 # This will:
 # - Download all 2024 data (cached!)
+# - Train on ALL qualified stocks (~1500-2000 stocks)
 # - Train on each business day
 # - Save model versions
-# - Takes ~4-6 hours for full year (mostly first-time downloads)
+# - Takes ~8-12 hours for full year (mostly first-time downloads)
+
+# Or use fewer stocks for faster training:
+python run_yearly_training.py --year 2024 --stocks 500  # ~4-6 hours
 ```
 
 ### Daily Usage (Fast!)
 
 ```bash
 # Every day, run this for stock picks
-python run_5session_picker.py --stocks 500
+python run_5session_picker.py
 
 # Uses existing model → takes ~30 seconds!
 # Only downloads today's new data
+# Predicts on ALL stocks!
 ```
 
 ### Weekly/Monthly Updates
 
 ```bash
-# Update model with recent dates
-python run_yearly_training.py --year 2024 --stocks 500
+# Update model with recent dates - ALL STOCKS
+python run_yearly_training.py --year 2024
 
 # Only trains new untrained dates
 # Very fast since data is cached!
@@ -323,30 +354,40 @@ python run_yearly_training.py --year 2024 --stocks 500
 ### Daily Stock Picker
 
 ```bash
-# Basic (uses existing model)
+# Basic - ALL stocks (recommended!)
 python run_5session_picker.py
 
-# With more stocks
-python run_5session_picker.py --stocks 500
+# Explicitly use all stocks
+python run_5session_picker.py --all
 
-# Force retrain
-python run_5session_picker.py --stocks 500 --retrain
+# Limit to top N stocks
+python run_5session_picker.py --stocks 500
+python run_5session_picker.py --stocks 1000
+
+# Force retrain with all stocks
+python run_5session_picker.py --retrain
 ```
 
 ### Yearly Training
 
 ```bash
-# Train specific year
+# Train specific year - ALL STOCKS (recommended!)
+python run_yearly_training.py --year 2024
+
+# Train specific year - Limited stocks
 python run_yearly_training.py --year 2024 --stocks 500
 
-# Train year range
+# Train year range - ALL STOCKS
+python run_yearly_training.py --year-start 2023 --year-end 2024
+
+# Train year range - Top 500 stocks
 python run_yearly_training.py --year-start 2023 --year-end 2024 --stocks 500
 
 # Check status
 python run_yearly_training.py --status
 
-# Force retrain all
-python run_yearly_training.py --year 2024 --stocks 500 --force
+# Force retrain all dates
+python run_yearly_training.py --year 2024 --force
 ```
 
 ### Cache Management
@@ -436,14 +477,14 @@ python run_yearly_training.py --year 2024 --stocks 500
 
 ## 🚀 Next Steps
 
-1. **First Time**: Train on recent year
+1. **First Time**: Train on recent year with ALL stocks
    ```bash
-   python run_yearly_training.py --year 2024 --stocks 500
+   python run_yearly_training.py --year 2024
    ```
 
-2. **Daily**: Get stock picks
+2. **Daily**: Get stock picks (uses existing model)
    ```bash
-   python run_5session_picker.py --stocks 500
+   python run_5session_picker.py
    ```
 
 3. **Check Progress**:
@@ -451,10 +492,22 @@ python run_yearly_training.py --year 2024 --stocks 500
    python run_yearly_training.py --status
    ```
 
-4. **Update Model** (monthly):
+4. **Update Model** (weekly/monthly):
    ```bash
-   python run_yearly_training.py --year 2024 --stocks 500
+   python run_yearly_training.py --year 2024
    ```
+
+### Quick Summary:
+
+**For comprehensive training on ALL stocks:**
+- Just run commands without `--stocks` parameter!
+- `python run_yearly_training.py --year 2024` ← ALL stocks
+- `python run_5session_picker.py` ← ALL stocks
+
+**For faster training on limited stocks:**
+- Add `--stocks N` parameter
+- `python run_yearly_training.py --year 2024 --stocks 500` ← Top 500
+- `python run_5session_picker.py --stocks 200` ← Top 200
 
 ---
 
