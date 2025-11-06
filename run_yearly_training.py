@@ -78,10 +78,14 @@ class YearlyTrainer:
             'W_BBWidth', 'W_TrendOK', 'W_BBWidthPctl'
         ]
 
-    def train_for_date(self, training_date: date, n_stocks: int = 500) -> dict:
+    def train_for_date(self, training_date: date, n_stocks: int = None) -> dict:
         """
         Train model using data UP TO training_date
         This simulates training "as of" that date
+
+        Args:
+            training_date: Date to train for
+            n_stocks: Number of stocks to use (None = ALL stocks)
         """
         print("\n" + "=" * 80)
         print(f"📅 TRAINING FOR DATE: {training_date}")
@@ -97,16 +101,23 @@ class YearlyTrainer:
         bhav = self.fetcher.fetch_bhav_range(start_date, end_date)
         print(f"   ✅ Fetched {len(bhav):,} rows | {bhav['SC_CODE'].nunique()} unique stocks")
 
-        # Get qualified stocks
+        # Get qualified stocks (stocks with enough data)
         qualified_stocks = self.fetcher.get_stock_universe(bhav, self.MIN_DATA_POINTS)
 
-        # Limit to top N most liquid
-        if n_stocks and n_stocks < len(qualified_stocks):
-            liquidity = bhav.groupby('SC_CODE')['ValueTraded'].mean().sort_values(ascending=False)
+        # Filter to qualified stocks first
+        bhav_qualified = bhav[bhav['SC_CODE'].isin(qualified_stocks)].copy()
+
+        # Limit to top N most liquid if specified
+        if n_stocks and n_stocks > 0 and n_stocks < len(qualified_stocks):
+            print(f"📊 Limiting training to top {n_stocks} most liquid stocks...")
+            liquidity = bhav_qualified.groupby('SC_CODE')['ValueTraded'].mean().sort_values(ascending=False)
             top_stocks = liquidity.head(n_stocks).index.tolist()
-            bhav_train = bhav[bhav['SC_CODE'].isin(top_stocks)].copy()
+            bhav_train = bhav_qualified[bhav_qualified['SC_CODE'].isin(top_stocks)].copy()
+            print(f"   Training universe: {len(top_stocks)} stocks")
         else:
-            bhav_train = bhav.copy()
+            bhav_train = bhav_qualified.copy()
+            print(f"📊 Training on ALL qualified stocks: {len(qualified_stocks)} stocks")
+            print(f"   (Using every stock with enough data - no filtering!)")
 
         # Compute features (with caching - fast!)
         print("\n🔧 Computing features...")
@@ -231,13 +242,23 @@ class YearlyTrainer:
 
         return metrics
 
-    def train_year(self, year: int, n_stocks: int = 500, force: bool = False):
+    def train_year(self, year: int, n_stocks: int = None, force: bool = False):
         """
         Train on all business days in a year
+
+        Args:
+            year: Year to train
+            n_stocks: Number of stocks to use (None = ALL stocks)
+            force: Force retrain even if already trained
         """
         print("\n" + "=" * 80)
         print(f"🎓 YEARLY TRAINING: {year}")
         print("=" * 80)
+
+        if n_stocks:
+            print(f"📊 Training with top {n_stocks} most liquid stocks")
+        else:
+            print(f"📊 Training with ALL stocks (comprehensive mode!)")
 
         # Check model status
         latest_model = self.models_dir / "model_5session.pkl"
@@ -329,8 +350,11 @@ def main():
     parser.add_argument('--year', type=int, help='Year to train (e.g., 2024)')
     parser.add_argument('--year-start', type=int, help='Start year for range training')
     parser.add_argument('--year-end', type=int, help='End year for range training')
-    parser.add_argument('--stocks', type=int, default=500,
-                        help='Number of most liquid stocks to use for training (default: 500)')
+    parser.add_argument('--stocks', type=int, default=None,
+                        help='Number of most liquid stocks to use (default: None = ALL stocks). '
+                             'Examples: --stocks 500 (top 500), --stocks 1000 (top 1000)')
+    parser.add_argument('--all', action='store_true', dest='all_stocks',
+                        help='Train on ALL stocks (same as omitting --stocks)')
     parser.add_argument('--force', action='store_true',
                         help='Force retrain even if dates are already trained')
     parser.add_argument('--status', action='store_true',
@@ -346,11 +370,14 @@ def main():
         trainer.tracker.display_status(years)
         return
 
+    # Handle --all flag (overrides --stocks)
+    n_stocks = None if args.all_stocks else args.stocks
+
     # Validate arguments
     if args.year:
-        trainer.train_year(args.year, n_stocks=args.stocks, force=args.force)
+        trainer.train_year(args.year, n_stocks=n_stocks, force=args.force)
     elif args.year_start and args.year_end:
-        trainer.train_year_range(args.year_start, args.year_end, n_stocks=args.stocks, force=args.force)
+        trainer.train_year_range(args.year_start, args.year_end, n_stocks=n_stocks, force=args.force)
     else:
         parser.print_help()
         print("\n❌ Error: Must specify either --year or --year-start/--year-end")
