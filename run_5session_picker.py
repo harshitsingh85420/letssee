@@ -34,10 +34,16 @@ def main():
         help='Number of most liquid stocks to use for training (default: 200, use 500+ for best results)'
     )
 
+    parser.add_argument(
+        '--retrain',
+        action='store_true',
+        help='Force retrain model (default: use existing model if available)'
+    )
+
     args = parser.parse_args()
 
     # Run daily mode
-    run_daily(n_stocks=args.stocks)
+    run_daily(n_stocks=args.stocks, use_existing_model=not args.retrain)
 
 
 if __name__ == "__main__":
