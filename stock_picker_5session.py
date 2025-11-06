@@ -31,7 +31,7 @@ class StockPicker5Session:
     5-Session Stock Picker using ML to predict positive closes
     """
 
-    def __init__(self, base_dir: str = "./stock_picker_data"):
+    def __init__(self, base_dir: str = "./stock_picker_data", auto_load_model: bool = False):
         self.base_dir = Path(base_dir)
         self.models_dir = self.base_dir / "models"
         self.results_dir = self.base_dir / "results"
@@ -51,8 +51,58 @@ class StockPicker5Session:
         # Initialize data fetcher
         self.fetcher = BSEDataFetcher()
 
-        # Model will be set during training
+        # Model will be set during training or loading
         self.model = None
+        self.feature_cols = None
+
+        # Auto-load model if requested
+        if auto_load_model:
+            self.load_model()
+
+    def load_model(self) -> bool:
+        """
+        Load existing trained model from disk
+        Returns True if model was loaded successfully, False otherwise
+        """
+        model_path = self.models_dir / "model_5session.pkl"
+
+        if not model_path.exists():
+            print("⚠️  No trained model found. Please train a model first.")
+            return False
+
+        try:
+            print(f"📦 Loading model from: {model_path}")
+            with open(model_path, 'rb') as f:
+                save_package = pickle.load(f)
+
+            self.model = save_package['model']
+            self.feature_cols = save_package['feature_cols']
+
+            # Load configuration
+            if 'config' in save_package:
+                config = save_package['config']
+                self.LOOKBACK_DAYS = config.get('LOOKBACK_DAYS', self.LOOKBACK_DAYS)
+                self.FORWARD_PERIOD = config.get('FORWARD_PERIOD', self.FORWARD_PERIOD)
+                self.MIN_DATA_POINTS = config.get('MIN_DATA_POINTS', self.MIN_DATA_POINTS)
+
+            # Show metadata
+            if 'metadata' in save_package:
+                metadata = save_package['metadata']
+                print(f"   ✅ Model loaded successfully!")
+                print(f"   📅 Trained: {metadata.get('train_date', 'Unknown')}")
+                print(f"   📊 CV AUC: {metadata.get('cv_mean', 0):.4f}")
+                print(f"   🔢 Training samples: {metadata.get('n_training_samples', 0):,}")
+
+            return True
+
+        except Exception as e:
+            print(f"❌ Error loading model: {e}")
+            return False
+
+    def model_exists(self) -> bool:
+        """Check if a trained model exists"""
+        model_path = self.models_dir / "model_5session.pkl"
+        return model_path.exists()
 
     def fetch_data(self, n_stocks: int = 200) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
@@ -369,9 +419,13 @@ class StockPicker5Session:
         return csv_path
 
 
-def run_daily(n_stocks: int = 200):
+def run_daily(n_stocks: int = 200, use_existing_model: bool = True):
     """
-    Daily mode: Fetch data, train model, predict, show ALL qualifying stocks
+    Daily mode: Fetch data, optionally train model, predict, show ALL qualifying stocks
+
+    Args:
+        n_stocks: Number of most liquid stocks to use for training
+        use_existing_model: If True, use existing model instead of retraining (faster!)
     """
     print("\n" + "=" * 80)
     print("🎯 5-SESSION STOCK PICKER - DAILY MODE")
@@ -385,12 +439,26 @@ def run_daily(n_stocks: int = 200):
 
     picker = StockPicker5Session()
 
-    # Fetch & prepare
+    # Check if we should use existing model
+    should_train = True
+    if use_existing_model and picker.model_exists():
+        print("\n📦 Existing model found!")
+        print("   Loading instead of retraining (saves 5-10 minutes)...")
+        if picker.load_model():
+            should_train = False
+        else:
+            print("   Load failed, will train new model...")
+
+    # Fetch & prepare data
     raw_bhav, features_with_labels = picker.fetch_data(n_stocks=n_stocks)
 
-    # Train
-    X, y = picker.prepare_training_data(features_with_labels)
-    picker.train_model(X, y)
+    # Train if needed
+    if should_train:
+        print("\n🎓 Training new model...")
+        X, y = picker.prepare_training_data(features_with_labels)
+        picker.train_model(X, y)
+    else:
+        print("\n✅ Using existing model (no training needed)")
 
     # Predict on latest
     predictions = picker.predict(features_with_labels)

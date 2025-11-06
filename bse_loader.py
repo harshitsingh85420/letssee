@@ -185,26 +185,50 @@ class BSEDataFetcher:
 
     def fetch_bhav_range(self, start_date: date, end_date: date) -> pd.DataFrame:
         """
-        Fetch BhavCopy data for a date range with caching
+        Fetch BhavCopy data for a date range with per-date caching
+        Each date is cached separately, so we only download what's missing
         """
-        # Check cache first
-        cache_key = f"bhav_bse_{self.ymd(start_date)}_{self.ymd(end_date)}.pkl"
-        cache_file = self.cache_dir / cache_key
-
-        if cache_file.exists():
-            print(f"✅ Loading from cache: {cache_key}")
-            with open(cache_file, 'rb') as f:
-                return pickle.load(f)
-
-        # Fetch fresh data
         print(f"📥 Fetching BSE data: {start_date} → {end_date}")
+
         got = []
         cur = start_date
+        cached_count = 0
+        downloaded_count = 0
 
         while cur <= end_date:
-            df = self.fetch_bhav_for(cur)
-            if df is not None and len(df) > 0:
-                got.append(df)
+            # Check per-date cache first
+            date_cache_key = f"bhav_bse_{self.ymd(cur)}.pkl"
+            date_cache_file = self.cache_dir / date_cache_key
+
+            if date_cache_file.exists():
+                # Load from cache
+                try:
+                    with open(date_cache_file, 'rb') as f:
+                        df = pickle.load(f)
+                    got.append(df)
+                    cached_count += 1
+                except Exception as e:
+                    print(f"⚠️ Cache load failed for {cur}: {e}, will re-download")
+                    # Remove corrupted cache
+                    date_cache_file.unlink(missing_ok=True)
+                    # Fetch fresh
+                    df = self.fetch_bhav_for(cur)
+                    if df is not None and len(df) > 0:
+                        got.append(df)
+                        # Cache it
+                        with open(date_cache_file, 'wb') as f:
+                            pickle.dump(df, f, protocol=pickle.HIGHEST_PROTOCOL)
+                        downloaded_count += 1
+            else:
+                # Fetch fresh data and cache it
+                df = self.fetch_bhav_for(cur)
+                if df is not None and len(df) > 0:
+                    got.append(df)
+                    # Cache this date
+                    with open(date_cache_file, 'wb') as f:
+                        pickle.dump(df, f, protocol=pickle.HIGHEST_PROTOCOL)
+                    downloaded_count += 1
+
             cur += timedelta(days=1)
 
         if not got:
@@ -213,12 +237,8 @@ class BSEDataFetcher:
         # Combine all
         result = pd.concat(got, ignore_index=True)
 
-        # Cache it
-        print(f"💾 Caching to: {cache_key}")
-        with open(cache_file, 'wb') as f:
-            pickle.dump(result, f, protocol=pickle.HIGHEST_PROTOCOL)
-
         print(f"✅ Total rows: {len(result):,} | Dates: {result['DATE'].min()} → {result['DATE'].max()}")
+        print(f"   📦 Cached: {cached_count} dates | 📥 Downloaded: {downloaded_count} dates")
         return result
 
     def get_stock_universe(self, bhav_df: pd.DataFrame, min_days: int = 200) -> list:
