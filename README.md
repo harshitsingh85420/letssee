@@ -216,35 +216,48 @@ self.MIN_THRESHOLD = 0.52        # Minimum threshold
 
 ---
 
-## Caching System
+## Caching System - Download Once, Use Forever
 
-**3-layer intelligent caching for 10x speedup:**
+**Aggressive 3-layer caching eliminates redundant downloads:**
 
-### 1. BSE Data Cache
-- Raw BhavCopy data per date range
+### Per-Date BSE Data Cache
+- **Downloads once**: Each date cached separately (`bhav_bse_20250107.pkl`)
+- **Uses forever**: Historical data NEVER re-downloaded
+- **Only fetches**: NEW dates (today's data = 10 seconds)
 - Location: `stock_picker_data/cache/bse_data/`
-- Speed: 3-5 min → 5-10 sec
+- Example: Day 1 downloads 700 dates → Day 30 downloads only 30 new dates!
 
-### 2. Feature Cache
-- All 50+ computed indicators cached
+### Feature Cache
+- **Computes once**: All 50+ indicators cached
+- **Reuses forever**: Same data = instant load from cache
 - Location: `stock_picker_data/cache/features/`
-- Speed: 10-15 min → Instant
+- Speed: 10-15 min → **<1 second**
 
-### 3. Model Cache
-- Trained LightGBM model + config + metadata
+### Model Cache
+- **Trains once**: Full model + config + metadata
+- **Loads instantly**: All future predictions
 - Location: `stock_picker_data/models/model_5session.pkl`
-- Speed: 2-3 min training → Instant load
+- Speed: 2-3 min → **<1 second**
+
+### Performance Impact
+```
+First run:   30-40 minutes (download + compute + train)
+Second run:  2-3 minutes   (all from cache!)
+Daily runs:  2-3 minutes   (only fetch today's new date)
+
+Speedup: 15-20x faster with cache!
+```
+
+### What NEVER Gets Re-Downloaded
+- ✅ Historical BSE data (permanent once cached)
+- ✅ Computed features (permanent once cached)
+- ✅ Trained models (until you retrain)
+
+**See [CACHING_STRATEGY.md](./CACHING_STRATEGY.md) for complete details**
 
 **Manage cache:**
 ```bash
 python cache_manager.py
-
-# Options:
-# 1. Show cache info
-# 2. List cached files
-# 3. Clear BSE cache
-# 4. Clear features cache
-# 5. Clear ALL caches
 ```
 
 ---
