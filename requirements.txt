@@ -74,9 +74,9 @@ yfinance>=0.2.40
 requests>=2.31.0
 beautifulsoup4>=4.12.0
 
-# NSE/BSE data fetching (India-specific)
-# nsepython>=1.0.0  # Uncomment if using NSE Python API
-# jugaad-data>=0.20  # Uncomment for alternative NSE data source
+# NSE/BSE data fetching (India-specific) ⭐ NOW USED FOR REAL DATA
+nsepython>=1.0.0  # For real FII/DII and Options IV data (ESSENTIAL)
+# jugaad-data>=0.20  # Alternative NSE data source (optional backup)
 
 # ============================================================================
 # SENTIMENT ANALYSIS (PHASE 3)
