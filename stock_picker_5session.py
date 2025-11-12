@@ -104,12 +104,14 @@ class StockPicker5Session:
         model_path = self.models_dir / "model_5session.pkl"
         return model_path.exists()
 
-    def fetch_data(self, n_stocks: int = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def fetch_data(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Fetch raw BhavCopy data from BSE
 
-        Args:
-            n_stocks: Number of stocks to use for training (None = ALL stocks)
+        CRITICAL: Trains on ALL 5600+ BSE stocks (no filtering!)
+        User requirement: "don't filter based on liquidity..nor price..
+                          nor you only train with top 500 or anything..
+                          do train with every stock..strictly"
 
         Returns:
             (raw_bhav, features_with_labels)
@@ -132,21 +134,17 @@ class StockPicker5Session:
         # Get stock universe (stocks with enough data)
         qualified_stocks = self.fetcher.get_stock_universe(bhav, self.MIN_DATA_POINTS)
 
-        # Filter to qualified stocks first
+        # Filter to qualified stocks only (minimum data requirement)
         bhav_qualified = bhav[bhav['SC_CODE'].isin(qualified_stocks)].copy()
 
-        # Limit to top N most liquid stocks for training (but predict on all)
-        if n_stocks and n_stocks > 0 and n_stocks < len(qualified_stocks):
-            print(f"📊 Limiting training to top {n_stocks} most liquid stocks...")
-            # Calculate average turnover per stock
-            liquidity = bhav_qualified.groupby('SC_CODE')['ValueTraded'].mean().sort_values(ascending=False)
-            top_stocks = liquidity.head(n_stocks).index.tolist()
-            bhav_train = bhav_qualified[bhav_qualified['SC_CODE'].isin(top_stocks)].copy()
-            print(f"   Training universe: {len(top_stocks)} stocks")
-        else:
-            bhav_train = bhav_qualified.copy()
-            print(f"📊 Training on ALL qualified stocks: {len(qualified_stocks)} stocks")
-            print(f"   (Using every stock with enough data - comprehensive mode!)")
+        # TRAIN ON ALL QUALIFIED STOCKS - NO FILTERING!
+        bhav_train = bhav_qualified.copy()
+        print(f"📊 Training on ALL {len(qualified_stocks)} qualified stocks")
+        print(f"   ✅ COMPREHENSIVE MODE: Every stock with ≥{self.MIN_DATA_POINTS} data points")
+        print(f"   ✅ NO liquidity filtering")
+        print(f"   ✅ NO price filtering")
+        print(f"   ✅ NO arbitrary limits")
+        print(f"   📈 Expected universe: 5600+ BSE stocks (filtered only by data availability)")
 
         # Compute features
         print("\n" + "=" * 80)
@@ -427,12 +425,13 @@ class StockPicker5Session:
         return csv_path
 
 
-def run_daily(n_stocks: int = None, use_existing_model: bool = True):
+def run_daily(use_existing_model: bool = True):
     """
     Daily mode: Fetch data, optionally train model, predict, show ALL qualifying stocks
 
+    CRITICAL: Trains on ALL 5600+ BSE stocks (no filtering by liquidity/price/limit)
+
     Args:
-        n_stocks: Number of most liquid stocks to use for training (None = ALL stocks)
         use_existing_model: If True, use existing model instead of retraining (faster!)
     """
     print("\n" + "=" * 80)
@@ -442,6 +441,7 @@ def run_daily(n_stocks: int = None, use_existing_model: bool = True):
     print("   • Run today → tells which stocks to buy tomorrow")
     print("   • Expects positive close in 5 sessions")
     print("   • NSE data (priority) → BSE fallback")
+    print("   • Trains on ALL 5600+ BSE stocks (comprehensive mode)")
     print("   • Shows ALL qualifying stocks (no limit!)")
     print("=" * 80)
 
@@ -457,12 +457,12 @@ def run_daily(n_stocks: int = None, use_existing_model: bool = True):
         else:
             print("   Load failed, will train new model...")
 
-    # Fetch & prepare data
-    raw_bhav, features_with_labels = picker.fetch_data(n_stocks=n_stocks)
+    # Fetch & prepare data (ALL STOCKS - no filtering!)
+    raw_bhav, features_with_labels = picker.fetch_data()
 
     # Train if needed
     if should_train:
-        print("\n🎓 Training new model...")
+        print("\n🎓 Training new model on ALL stocks...")
         X, y = picker.prepare_training_data(features_with_labels)
         picker.train_model(X, y)
     else:
@@ -483,5 +483,9 @@ def run_daily(n_stocks: int = None, use_existing_model: bool = True):
 if __name__ == "__main__":
     import sys
 
-    n_stocks = int(sys.argv[1]) if len(sys.argv) > 1 else 200
-    run_daily(n_stocks=n_stocks)
+    # No more n_stocks parameter - always trains on ALL stocks
+    # User can pass 'retrain' as argument to force retraining
+    force_retrain = len(sys.argv) > 1 and sys.argv[1].lower() == 'retrain'
+    use_existing = not force_retrain
+
+    run_daily(use_existing_model=use_existing)
