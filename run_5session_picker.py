@@ -54,7 +54,9 @@ def main():
     n_stocks = None if args.all_stocks else args.stocks
 
     # Run daily mode
-    run_daily(n_stocks=n_stocks, use_existing_model=not args.retrain)
+    # Note: run_daily always trains on ALL stocks as per requirement #4
+    # The n_stocks parameter is not used in current implementation
+    run_daily(use_existing_model=not args.retrain)
 
 
 if __name__ == "__main__":
