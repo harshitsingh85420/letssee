@@ -187,6 +187,9 @@ class BSEDataFetcher:
         """
         Fetch BhavCopy data for a date range with per-date caching
         Each date is cached separately, so we only download what's missing
+
+        Caches both positive results (data available) and negative results (no data)
+        to avoid retrying unavailable dates (holidays, market closures, etc.)
         """
         print(f"📥 Fetching BSE data: {start_date} → {end_date}")
 
@@ -194,6 +197,7 @@ class BSEDataFetcher:
         cur = start_date
         cached_count = 0
         downloaded_count = 0
+        skipped_count = 0  # Dates with no data (cached as unavailable)
 
         while cur <= end_date:
             # Check per-date cache first
@@ -205,8 +209,15 @@ class BSEDataFetcher:
                 try:
                     with open(date_cache_file, 'rb') as f:
                         df = pickle.load(f)
-                    got.append(df)
-                    cached_count += 1
+
+                    # Check if this is a negative cache marker (empty DataFrame with special marker)
+                    if isinstance(df, pd.DataFrame) and len(df) == 0 and '_NO_DATA_MARKER' in df.columns:
+                        # Data was not available for this date - skip without retrying
+                        skipped_count += 1
+                    elif df is not None and len(df) > 0:
+                        got.append(df)
+                        cached_count += 1
+
                 except Exception as e:
                     print(f"⚠️ Cache load failed for {cur}: {e}, will re-download")
                     # Remove corrupted cache
@@ -219,15 +230,28 @@ class BSEDataFetcher:
                         with open(date_cache_file, 'wb') as f:
                             pickle.dump(df, f, protocol=pickle.HIGHEST_PROTOCOL)
                         downloaded_count += 1
+                    else:
+                        # Cache negative result (no data available)
+                        no_data_marker = pd.DataFrame(columns=['_NO_DATA_MARKER'])
+                        with open(date_cache_file, 'wb') as f:
+                            pickle.dump(no_data_marker, f, protocol=pickle.HIGHEST_PROTOCOL)
+                        skipped_count += 1
             else:
                 # Fetch fresh data and cache it
                 df = self.fetch_bhav_for(cur)
                 if df is not None and len(df) > 0:
                     got.append(df)
-                    # Cache this date
+                    # Cache positive result (data available)
                     with open(date_cache_file, 'wb') as f:
                         pickle.dump(df, f, protocol=pickle.HIGHEST_PROTOCOL)
                     downloaded_count += 1
+                else:
+                    # Cache negative result (no data available)
+                    # This prevents retrying failed dates on subsequent runs
+                    no_data_marker = pd.DataFrame(columns=['_NO_DATA_MARKER'])
+                    with open(date_cache_file, 'wb') as f:
+                        pickle.dump(no_data_marker, f, protocol=pickle.HIGHEST_PROTOCOL)
+                    skipped_count += 1
 
             cur += timedelta(days=1)
 
@@ -238,7 +262,7 @@ class BSEDataFetcher:
         result = pd.concat(got, ignore_index=True)
 
         print(f"✅ Total rows: {len(result):,} | Dates: {result['DATE'].min()} → {result['DATE'].max()}")
-        print(f"   📦 Cached: {cached_count} dates | 📥 Downloaded: {downloaded_count} dates")
+        print(f"   📦 Cached: {cached_count} dates | 📥 Downloaded: {downloaded_count} dates | ⏭️  Skipped: {skipped_count} dates (no data)")
         return result
 
     def get_stock_universe(self, bhav_df: pd.DataFrame, min_days: int = 200) -> list:
