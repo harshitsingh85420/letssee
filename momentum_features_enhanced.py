@@ -95,8 +95,17 @@ def prepare_features_enhanced(bhav: pd.DataFrame,
     if cache_file.exists():
         print(f"✅ Loading ENHANCED features from cache: {cache_key}")
         print(f"   (Saves 15-20 minutes of computation!)")
-        with open(cache_file, 'rb') as f:
-            return pickle.load(f)
+        try:
+            with open(cache_file, 'rb') as f:
+                return pickle.load(f)
+        except (pickle.UnpicklingError, EOFError, ValueError) as e:
+            print(f"⚠️ Cache file corrupted ({type(e).__name__}), deleting and recomputing...")
+            try:
+                cache_file.unlink()  # Delete corrupted cache
+                print(f"   Deleted corrupted cache: {cache_key}")
+            except Exception as delete_error:
+                print(f"   Warning: Could not delete cache file: {delete_error}")
+            # Continue to recompute features below
 
     print("🚀 Computing ENHANCED momentum/breakout features...")
     print(f"   This includes 90+ features (original + advanced)")
