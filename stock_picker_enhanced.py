@@ -335,11 +335,13 @@ class EnhancedStockPicker:
 
         # Detect current regime
         current_regime = None
-        if detect_regime and self.regime_detector and REGIME_DETECTION_AVAILABLE:
+        if detect_regime and self.regime_detector and REGIME_DETECTION_AVAILABLE and self.regime_detector.is_fitted():
             recent_returns = features_df.groupby('DATE')['Close'].mean().pct_change().tail(20)
             current_regime_id = self.regime_detector.predict_regime(recent_returns)
             current_regime = self.regime_detector.get_regime_label(current_regime_id)
             print(f"\n🎯 Current market regime: {current_regime}")
+        elif detect_regime and not (self.regime_detector and self.regime_detector.is_fitted()):
+            print("\n⚠️ Regime detection requested but model not fitted - continuing without regime adaptation")
 
         # Prepare features
         df_predict = df_latest.dropna(subset=self.feature_cols).copy()

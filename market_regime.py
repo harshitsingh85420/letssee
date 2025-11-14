@@ -65,6 +65,10 @@ class MarketRegimeDetector:
         self.model = None
         self.regime_stats = None
 
+    def is_fitted(self) -> bool:
+        """Check if the model has been fitted"""
+        return self.model is not None
+
     def fit(self, returns: pd.Series, volumes: Optional[pd.Series] = None):
         """
         Fit HMM to historical returns
