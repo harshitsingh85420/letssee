@@ -113,6 +113,10 @@ def prepare_features_enhanced(bhav: pd.DataFrame,
 
     df = bhav.sort_values(["SC_CODE", "DATE"]).copy()
 
+    # Ensure DATE is datetime type (not string/object)
+    if df['DATE'].dtype == 'object':
+        df['DATE'] = pd.to_datetime(df['DATE'])
+
     # ========== STEP 1: Original per-symbol features ==========
     print("\n" + "=" * 80)
     print("📊 STEP 1: COMPUTING ORIGINAL FEATURES (50+)")

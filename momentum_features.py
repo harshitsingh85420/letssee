@@ -250,6 +250,10 @@ def prepare_features_all(bhav: pd.DataFrame, cache_dir: str = "./stock_picker_da
     print(f"   This will take 10-15 minutes but will be cached for future runs...")
     df = bhav.sort_values(["SC_CODE", "DATE"]).copy()
 
+    # Ensure DATE is datetime type (not string/object)
+    if df['DATE'].dtype == 'object':
+        df['DATE'] = pd.to_datetime(df['DATE'])
+
     # ========== STEP 1: Per-symbol features ==========
     print("   • Computing per-symbol features (EMAs, ATR, breakouts, RSI, ADX)...")
     df = df.groupby("SC_CODE", group_keys=False).apply(compute_per_symbol_features)
