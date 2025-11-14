@@ -177,7 +177,7 @@ def prepare_features_enhanced(bhav: pd.DataFrame,
             df.sort_values(["SC_CODE", "DATE"])
             .groupby("SC_CODE")[["W_BBWidth", "W_TrendOK"]]
             .apply(lambda x: x.ffill())
-            .reset_index(level=0, drop=True)
+            .reset_index(drop=True)
         )
 
         # Weekly percentile
