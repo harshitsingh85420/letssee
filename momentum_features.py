@@ -234,8 +234,17 @@ def prepare_features_all(bhav: pd.DataFrame, cache_dir: str = "./stock_picker_da
     if cache_file.exists():
         print(f"✅ Loading features from cache: {cache_key}")
         print(f"   (Saves 10-15 minutes of computation!)")
-        with open(cache_file, 'rb') as f:
-            return pickle.load(f)
+        try:
+            with open(cache_file, 'rb') as f:
+                return pickle.load(f)
+        except (pickle.UnpicklingError, EOFError, ValueError) as e:
+            print(f"⚠️ Cache file corrupted ({type(e).__name__}), deleting and recomputing...")
+            try:
+                cache_file.unlink()  # Delete corrupted cache
+                print(f"   Deleted corrupted cache: {cache_key}")
+            except Exception as delete_error:
+                print(f"   Warning: Could not delete cache file: {delete_error}")
+            # Continue to recompute features below
 
     print("🔧 Computing momentum/breakout features (not cached)...")
     print(f"   This will take 10-15 minutes but will be cached for future runs...")
