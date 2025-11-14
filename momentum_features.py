@@ -178,7 +178,7 @@ def compute_weekly_features(gsym: pd.DataFrame) -> pd.DataFrame:
     Compute weekly context features
     Weekly timeframe for longer-term trend confirmation
     """
-    gsym = gsym.set_index(pd.to_datetime(gsym["DATE"]))
+    gsym = gsym.set_index(pd.to_datetime(gsym["DATE"]), drop=True)
 
     # Resample to weekly (Friday close)
     wk = gsym.resample("W-FRI").agg({
