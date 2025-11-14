@@ -199,7 +199,8 @@ def compute_weekly_features(gsym: pd.DataFrame) -> pd.DataFrame:
     # Weekly trend OK? (close > EMA10 and EMA10 rising)
     wk["W_TrendOK"] = ((wk["Close"] > wk["W_EMA10"]) & (wk["W_EMA10"].diff() > 0)).astype(int)
 
-    wk["W_Date"] = wk.index.date
+    # Convert index to datetime (normalize to midnight to match daily DATE format)
+    wk["W_Date"] = pd.to_datetime(wk.index.date)
 
     return wk[["W_BBWidth", "W_TrendOK", "W_Date"]]
 
