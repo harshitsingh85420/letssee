@@ -277,7 +277,7 @@ def prepare_features_all(bhav: pd.DataFrame, cache_dir: str = "./stock_picker_da
             df.sort_values(["SC_CODE", "DATE"])
             .groupby("SC_CODE")[["W_BBWidth", "W_TrendOK"]]
             .apply(lambda x: x.ffill())
-            .reset_index(level=0, drop=True)
+            .reset_index(drop=True)
         )
 
         # Weekly BB width percentile (cross-sectional per day)
