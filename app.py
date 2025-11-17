@@ -226,7 +226,7 @@ if 'picks' in st.session_state:
     # Show table
     st.dataframe(
         display_df,
-        use_container_width=True,
+        width='stretch',
         height=400
     )
 
@@ -238,7 +238,7 @@ if 'picks' in st.session_state:
             data=csv,
             file_name=f"stock_picks_{signal_date}.csv",
             mime="text/csv",
-            use_container_width=True
+            use_container_width=True  # Keep this for now as it's still supported for buttons
         )
 
     # Top picks highlight
