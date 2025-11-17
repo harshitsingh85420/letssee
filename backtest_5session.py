@@ -107,8 +107,11 @@ class Backtester5Session:
         """
         Simulate running the system on a specific historical date
         """
+        # Convert date to pd.Timestamp for comparison with datetime64[ns] column
+        signal_date_ts = pd.Timestamp(signal_date)
+
         # Filter to data available up to signal date (no lookahead!)
-        df_until_date = features_df[features_df['DATE'] <= signal_date].copy()
+        df_until_date = features_df[features_df['DATE'] <= signal_date_ts].copy()
 
         if df_until_date.empty:
             return None
@@ -146,7 +149,7 @@ class Backtester5Session:
         model = lgb.train(params, train_data, num_boost_round=200, callbacks=[lgb.log_evaluation(0)])
 
         # Predict on signal date
-        df_signal = features_df[features_df['DATE'] == signal_date].copy()
+        df_signal = features_df[features_df['DATE'] == signal_date_ts].copy()
 
         if df_signal.empty:
             return None
