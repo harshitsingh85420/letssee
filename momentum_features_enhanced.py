@@ -87,8 +87,12 @@ def prepare_features_enhanced(bhav: pd.DataFrame,
     n_stocks = bhav['SC_CODE'].nunique()
     n_rows = len(bhav)
 
+    # Format dates as strings (YYYY-MM-DD) for valid filenames
+    min_date_str = pd.to_datetime(min_date).strftime('%Y-%m-%d')
+    max_date_str = pd.to_datetime(max_date).strftime('%Y-%m-%d')
+
     cache_version = 'v2_enhanced' if use_advanced else 'v1_basic'
-    cache_key = f"features_{cache_version}_{min_date}_{max_date}_{n_stocks}_{n_rows}.pkl"
+    cache_key = f"features_{cache_version}_{min_date_str}_{max_date_str}_{n_stocks}_{n_rows}.pkl"
     cache_file = cache_path / cache_key
 
     # Try to load from cache

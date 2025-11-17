@@ -227,7 +227,11 @@ def prepare_features_all(bhav: pd.DataFrame, cache_dir: str = "./stock_picker_da
     n_stocks = bhav['SC_CODE'].nunique()
     n_rows = len(bhav)
 
-    cache_key = f"features_{min_date}_{max_date}_{n_stocks}_{n_rows}.pkl"
+    # Format dates as strings (YYYY-MM-DD) for valid filenames
+    min_date_str = pd.to_datetime(min_date).strftime('%Y-%m-%d')
+    max_date_str = pd.to_datetime(max_date).strftime('%Y-%m-%d')
+
+    cache_key = f"features_{min_date_str}_{max_date_str}_{n_stocks}_{n_rows}.pkl"
     cache_file = cache_path / cache_key
 
     # Try to load from cache
