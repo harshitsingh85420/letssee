@@ -59,6 +59,7 @@ Train and manage your ML models
 **Features:**
 - Check if trained model exists
 - View model details and metadata
+- **🔄 Update model with new data** (Incremental Learning!)
 - Train new models with custom parameters
 - Configure lookback period (365-1095 days)
 - Choose training stock universe
@@ -66,9 +67,18 @@ Train and manage your ML models
 - See top 20 most important features
 - Model saved automatically for reuse
 
+**Incremental Learning (NEW!):**
+- **Model learns continuously** as new data becomes available
+- Shows how many new trading days are available
+- One-click update with latest market data
+- **Faster than retraining** (5-10 min vs 15-20 min)
+- Model gets smarter over time automatically!
+- See: `INCREMENTAL_LEARNING.md` for details
+
 **Use Cases:**
-- "Train a new model with ALL 4000+ stocks"
-- "Update model with latest data"
+- "Train a new model with ALL 4000+ stocks" (Initial)
+- "Update model with this week's data" (Weekly - NEW!)
+- "Add last month's data to model" (Monthly - NEW!)
 - "Which features are most important?"
 - "Train a lightweight model with 500 stocks"
 
@@ -77,6 +87,11 @@ Train and manage your ML models
 - **500 stocks**: Medium (10-15 min), balanced
 - **1000 stocks**: Better (15-20 min), more comprehensive
 - **ALL stocks**: Best (20-30 min), full 4000+ stocks
+
+**Update Options (NEW!):**
+- **Weekly updates**: Add 5 new trading days (5 min)
+- **Monthly updates**: Add ~20 new trading days (10 min)
+- **Auto-update**: Only updates if 7+ new days available
 
 ---
 
