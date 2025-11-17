@@ -359,12 +359,97 @@ with tab3:
             with st.spinner("Loading model..."):
                 if picker.load_model():
                     st.session_state['model_loaded'] = True
+
+        # INCREMENTAL UPDATE SECTION
+        st.markdown("---")
+        st.subheader("🔄 Update Model with New Data")
+        st.markdown("Add new market data to existing model - faster than retraining from scratch!")
+
+        # Check what new data is available
+        try:
+            from incremental_training import IncrementalModelTrainer
+
+            trainer = IncrementalModelTrainer()
+            last_info = trainer.get_last_training_info()
+
+            if last_info and last_info.get('last_data_date'):
+                last_date = last_info['last_data_date']
+                if isinstance(last_date, str):
+                    last_date = pd.to_datetime(last_date).date()
+                elif isinstance(last_date, pd.Timestamp):
+                    last_date = last_date.date()
+
+                new_days = (date.today() - last_date).days
+
+                col_a, col_b, col_c = st.columns(3)
+                with col_a:
+                    st.metric("Last Training", last_info['train_date'])
+                with col_b:
+                    st.metric("Last Data Date", last_info['last_data_date'])
+                with col_c:
+                    st.metric("New Days Available", new_days)
+
+                if new_days >= 7:
+                    st.info(f"✨ {new_days} new trading days available - model can learn from recent data!")
+                elif new_days > 0:
+                    st.warning(f"⚠️ Only {new_days} new days - consider waiting for more data")
+                else:
+                    st.info("📊 Model is up to date!")
+
+        except Exception as e:
+            st.warning("Could not check model status")
+
+        update_n_stocks = st.selectbox(
+            "Stocks for Update",
+            options=[200, 500, 1000, "ALL"],
+            index=0,
+            key="update_n_stocks",
+            help="Number of stocks to include in update"
+        )
+
+        if st.button("🔄 Update Model with New Data", type="primary", key="update_btn"):
+            with st.spinner("🔄 Updating model with new data..."):
+                try:
+                    from incremental_training import IncrementalModelTrainer
+
+                    progress_container = st.empty()
+                    progress_container.info("🔍 Checking for new data...")
+
+                    if update_n_stocks == "ALL":
+                        update_n_stocks = None
+
+                    trainer = IncrementalModelTrainer()
+                    result = trainer.update_model_with_new_data(n_stocks=update_n_stocks)
+
+                    if result['status'] == 'success':
+                        progress_container.success("✅ Model updated successfully!")
+
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("New Samples Added", f"{result['new_samples']:,}")
+                        with col2:
+                            st.metric("Total Samples", f"{result['total_samples']:,}")
+                        with col3:
+                            st.metric("CV AUC", f"{result['cv_mean']:.4f}")
+
+                        st.success(f"📅 Data range: {result['data_range']}")
+                        st.balloons()
+
+                        st.session_state['model_updated'] = True
+                    else:
+                        progress_container.warning(f"⚠️ Update skipped: {result.get('reason', 'unknown')}")
+
+                except Exception as e:
+                    st.error(f"❌ Update failed: {str(e)}")
+                    with st.expander("Show Error Details"):
+                        st.exception(e)
+
     else:
         st.info("ℹ️ No trained model found. Train a new one below.")
 
     # Model training section
     st.markdown("---")
-    st.subheader("🎓 Train New Model")
+    st.subheader("🎓 Train New Model (From Scratch)")
 
     col1, col2 = st.columns(2)
 
