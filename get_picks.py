@@ -66,6 +66,10 @@ def get_picks_for_date(signal_date: date, n_stocks: int = 200, show_outcomes: bo
         print("❌ No data available for this date range")
         return None
 
+    # Ensure DATE column is datetime64[ns] for all comparisons
+    bhav = bhav.copy()
+    bhav['DATE'] = pd.to_datetime(bhav['DATE'])
+
     print(f"✅ Fetched {len(bhav):,} rows | {bhav['SC_CODE'].nunique()} unique stocks")
 
     # Filter to stocks with enough history
@@ -189,10 +193,6 @@ def get_picks_for_date(signal_date: date, n_stocks: int = 200, show_outcomes: bo
 
     # Add actual outcomes if available and requested
     if show_outcomes:
-        # Ensure DATE column is datetime64[ns] for comparison
-        if bhav['DATE'].dtype == 'object':
-            bhav['DATE'] = pd.to_datetime(bhav['DATE'])
-
         signal_date_ts = pd.Timestamp(signal_date)
         future_date = signal_date + timedelta(days=10)  # Look for close 5 sessions ahead
 
