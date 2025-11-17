@@ -209,8 +209,23 @@ with tab1:
 
 # ==================== TAB 2: BACKTEST ====================
 with tab2:
-    st.header("📊 Backtest Over Date Range")
-    st.markdown("Run backtesting over multiple dates to evaluate strategy performance")
+    st.header("📊 Backtest Strategy Performance")
+    st.markdown("Test your strategy on historical data with walk-forward model training")
+
+    st.info("💡 **How it works**: For EACH date, a fresh model is trained using only data available up to that date (no lookahead bias!). This is proper walk-forward testing.")
+
+    # Two backtest modes
+    backtest_mode = st.radio(
+        "Backtest Mode",
+        options=["Date Range", "Full Year"],
+        horizontal=True,
+        help="Date Range: Custom dates | Full Year: All trading days in a year"
+    )
+
+    st.markdown("---")
+
+    if backtest_mode == "Date Range":
+        st.subheader("📅 Custom Date Range Backtest")
 
     col1, col2 = st.columns(2)
 
@@ -286,6 +301,70 @@ with tab2:
                 st.error(f"❌ Error: {str(e)}")
                 with st.expander("Show Error Details"):
                     st.exception(e)
+
+    else:  # Full Year mode
+        st.subheader("📅 Full Year Backtest")
+        st.markdown("Backtest ALL trading days in a specific year with walk-forward training")
+
+        col_year, col_freq, col_stocks = st.columns(3)
+
+        with col_year:
+            year_to_test = st.selectbox(
+                "Select Year",
+                options=[2024, 2023, 2022, 2021, 2020],
+                index=0,
+                key="year_backtest"
+            )
+
+        with col_freq:
+            year_frequency = st.selectbox(
+                "Frequency",
+                options=["weekly", "biweekly", "monthly", "daily"],
+                index=0,
+                key="year_frequency",
+                help="How often to generate signals during the year"
+            )
+
+        with col_stocks:
+            year_n_stocks = st.selectbox(
+                "Training Stocks",
+                options=[200, 500, 1000, "ALL"],
+                index=0,
+                key="year_n_stocks"
+            )
+
+        st.warning(f"⚠️ **Important**: This will train a NEW model for EACH {year_frequency} date in {year_to_test}. This is CORRECT walk-forward testing but takes time!")
+
+        if year_n_stocks == "ALL":
+            year_n_stocks = None
+
+        if st.button("🚀 Run Year Backtest", type="primary", key="year_backtest_btn"):
+            with st.spinner(f"🔍 Backtesting all {year_frequency} dates in {year_to_test}..."):
+                try:
+                    from yearwise_backtest import backtest_year
+
+                    progress_container = st.empty()
+                    progress_container.info(f"📅 Getting trading days for {year_to_test}...")
+
+                    # Run year backtest
+                    results = backtest_year(
+                        year=year_to_test,
+                        frequency=year_frequency,
+                        n_stocks=year_n_stocks,
+                        lookback_days=730
+                    )
+
+                    if results is not None and len(results) > 0:
+                        st.session_state['backtest_results'] = results
+                        progress_container.success(f"✅ Year backtest complete! {len(results)} picks analyzed")
+                        st.balloons()
+                    else:
+                        progress_container.warning("⚠️ No results from backtest")
+
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+                    with st.expander("Show Error Details"):
+                        st.exception(e)
 
     # Display backtest results
     if 'backtest_results' in st.session_state:
