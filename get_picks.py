@@ -97,6 +97,19 @@ def get_picks_for_date(signal_date: date, n_stocks: int = 200, show_outcomes: bo
     from momentum_features import prepare_features_all, add_forward_returns
     import lightgbm as lgb
 
+    # Set feature columns (same as in backtest)
+    picker.feature_cols = [
+        'EMA20', 'EMA50', 'EMA200', 'EMA20_Slope5', 'EMA200_Slope', 'MA_Health', 'OverEMA20',
+        'ATR14', 'ATRpct', 'BBWidth', 'BBWidthPctl',
+        'DistTo20', 'DistTo63', 'DistTo52W',
+        'Break20_Today', 'Break63_Today', 'Hit52WH_Today',
+        'RangePos20',
+        'VolMult', 'UD_Vol_Ratio10',
+        'RET21D', 'RET63D', 'RS_Composite',
+        'RSI14', 'ADX14', '+DI14', '-DI14', 'ADX14_chg3',
+        'W_BBWidth', 'W_TrendOK', 'W_BBWidthPctl'
+    ]
+
     # Compute features
     features = prepare_features_all(bhav_train)
 
