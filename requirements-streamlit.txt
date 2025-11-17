@@ -1,0 +1,23 @@
+# Streamlit Web App Requirements
+# Install with: pip install -r requirements-streamlit.txt
+
+# Core dependencies
+pandas>=1.4.0
+numpy>=1.21.0
+requests>=2.27.0
+
+# Machine Learning
+lightgbm>=3.3.0
+scikit-learn>=1.0.0
+
+# Web Framework
+streamlit>=1.28.0
+
+# Plotting (for Streamlit charts)
+matplotlib>=3.5.0
+plotly>=5.0.0
+
+# Optional but recommended
+openpyxl>=3.0.0  # For Excel export
+
+# Note: No fracdiff or pandas_ta needed - we use native implementations
