@@ -116,9 +116,20 @@ def main():
     results = run_backtest(signal_dates, n_stocks=args.stocks)
 
     if results is not None and len(results) > 0:
+        # Save detailed results to CSV
+        output_file = f"backtest_results_{min(signal_dates)}_{max(signal_dates)}.csv"
+        results.to_csv(output_file, index=False)
+
         print("\n✅ Backtesting complete!")
         print(f"📊 Total picks analyzed: {len(results)}")
-        print(f"💾 Results saved to: stock_picker_data/backtest_results/")
+        print(f"💾 Detailed results saved to: {output_file}")
+        print(f"\n📋 CSV contains:")
+        print(f"   • Stock codes and names")
+        print(f"   • Entry prices and probabilities")
+        print(f"   • Actual 5-session returns")
+        print(f"   • Outcome (Positive/Negative/Flat)")
+        print(f"   • Signal dates")
+        print(f"\n💡 Open {output_file} in Excel to see all picks!")
     else:
         print("\n⚠️ No backtest results generated")
 
