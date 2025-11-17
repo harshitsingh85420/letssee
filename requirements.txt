@@ -54,8 +54,9 @@ statsmodels>=0.14.0
 # ============================================================================
 # TECHNICAL INDICATORS
 # ============================================================================
-# pandas_ta for advanced indicators (Squeeze Pro, Ichimoku, etc.)
-pandas_ta>=0.3.14b
+# pandas_ta>=0.3.14b  # NOT NEEDED - all indicators implemented natively
+# Note: pandas_ta 0.3.14b not available for Python 3.10, and versions 0.4.x require Python >=3.12
+# Our code has native implementations of: RSI, ADX, Bollinger Bands, EMA, ATR, VWAP, OBV, etc.
 
 # Alternative: TA-Lib (C-based, faster but harder to install)
 # TA-Lib>=0.4.25  # Uncomment if you want TA-Lib
@@ -130,8 +131,8 @@ pytz>=2023.3
 # ============================================================================
 #
 # TIER 1 - ESSENTIAL (Install immediately for Phase 1):
-#   pip install pandas_ta hmmlearn arch statsmodels xgboost
-#   Note: fracdiff is NOT needed - we have native implementation
+#   pip install hmmlearn arch statsmodels xgboost
+#   Note: fracdiff and pandas_ta NOT needed - we have native implementations
 #
 # TIER 2 - IMPORTANT (Install for Phase 2):
 #   pip install pytorch-tabnet torch
