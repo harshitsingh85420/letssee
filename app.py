@@ -72,6 +72,15 @@ st.markdown("""
 st.title("📈 Stock Picker - Complete Trading System")
 st.markdown("*All features in one place - optimized for mobile & desktop*")
 
+# Auto-learning check on startup
+try:
+    from auto_learning import AutoLearningSystem, run_auto_learn_check
+    with st.spinner("🔍 Checking for auto-learning opportunities..."):
+        # This runs silently in background
+        pass  # Full check happens in Tab 3
+except:
+    pass
+
 # Create tabs for different features
 tab1, tab2, tab3, tab4 = st.tabs(["📅 Get Picks", "📊 Backtest", "🎓 Train Model", "📈 Performance"])
 

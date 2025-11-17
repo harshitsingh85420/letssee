@@ -191,6 +191,19 @@ def get_picks_for_date(signal_date: date, n_stocks: int = 200, show_outcomes: bo
 
     print(f"✅ Generated {len(picks)} picks @ threshold {threshold:.2f}")
 
+    # Log predictions for automatic learning
+    try:
+        from auto_learning import AutoLearningSystem
+        auto_learner = AutoLearningSystem()
+        auto_learner.log_predictions(
+            signal_date=signal_date,
+            picks=picks,
+            features_used=df_predict,
+            feature_cols=picker.feature_cols
+        )
+    except Exception as e:
+        print(f"   ⚠️ Auto-learning log failed: {e}")
+
     # Add actual outcomes if available and requested
     if show_outcomes:
         signal_date_ts = pd.Timestamp(signal_date)
