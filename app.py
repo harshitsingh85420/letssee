@@ -210,26 +210,130 @@ with tab1:
 # ==================== TAB 2: BACKTEST ====================
 with tab2:
     st.header("📊 Backtest Strategy Performance")
-    st.markdown("Test your strategy on historical data with walk-forward model training")
+    st.markdown("Test your strategy on historical data")
 
-    st.info("💡 **How it works**: For EACH date, a fresh model is trained using only data available up to that date (no lookahead bias!). This is proper walk-forward testing.")
-
-    # Two backtest modes
+    # Three backtest modes
     backtest_mode = st.radio(
         "Backtest Mode",
-        options=["Date Range", "Full Year"],
+        options=["Continuous Learning", "Full Year", "Date Range"],
         horizontal=True,
-        help="Date Range: Custom dates | Full Year: All trading days in a year"
+        help="Continuous Learning: ONE model that learns! | Full Year: Entire year | Date Range: Custom dates"
     )
+
+    # Explain the selected mode
+    if backtest_mode == "Continuous Learning":
+        st.success("🧠 **Continuous Learning Mode**: ONE model that LEARNS from each date's outcomes and gets progressively smarter!")
+    elif backtest_mode == "Full Year":
+        st.info("📅 **Full Year Mode**: Tests entire year, trains fresh model for each date (walk-forward validation)")
+    else:
+        st.info("📆 **Date Range Mode**: Custom period, trains fresh model for each date (walk-forward validation)")
 
     st.markdown("---")
 
-    if backtest_mode == "Date Range":
+    if backtest_mode == "Continuous Learning":
+        st.subheader("🧠 Continuous Learning Backtest")
+        st.markdown("**Model learns from each date and gets progressively smarter!**")
+
+        col_cl_year, col_cl_freq, col_cl_stocks = st.columns(3)
+
+        with col_cl_year:
+            cl_year = st.selectbox(
+                "Select Year",
+                options=[2024, 2023, 2022, 2021, 2020],
+                index=0,
+                key="cl_year"
+            )
+
+        with col_cl_freq:
+            cl_frequency = st.selectbox(
+                "Frequency",
+                options=["weekly", "biweekly", "monthly"],
+                index=0,
+                key="cl_frequency",
+                help="How often model makes predictions and learns"
+            )
+
+        with col_cl_stocks:
+            cl_n_stocks = st.selectbox(
+                "Training Stocks",
+                options=[200, 500, 1000, "ALL"],
+                index=0,
+                key="cl_n_stocks"
+            )
+
+        st.success(f"""
+        🧠 **How Continuous Learning Works:**
+        1. Train initial model before {cl_year}
+        2. For each {cl_frequency} date:
+           - Make predictions with CURRENT model
+           - Get actual outcomes
+           - ADD outcomes to training data
+           - RETRAIN model → Now smarter!
+        3. Model keeps learning and improving!
+        """)
+
+        if cl_n_stocks == "ALL":
+            cl_n_stocks = None
+
+        if st.button("🚀 Run Continuous Learning", type="primary", key="cl_btn"):
+            with st.spinner(f"🧠 Running continuous learning backtest for {cl_year}..."):
+                try:
+                    from continuous_learning_backtest import run_continuous_learning_year
+
+                    progress_container = st.empty()
+                    progress_container.info(f"📅 Starting continuous learning for {cl_year}...")
+
+                    # Run continuous learning backtest
+                    results, metrics = run_continuous_learning_year(
+                        year=cl_year,
+                        frequency=cl_frequency,
+                        n_stocks=cl_n_stocks
+                    )
+
+                    if results is not None and len(results) > 0:
+                        st.session_state['backtest_results'] = results
+                        st.session_state['learning_metrics'] = metrics
+                        progress_container.success(f"✅ Continuous learning complete! {len(results)} picks analyzed")
+
+                        # Show learning curve
+                        if metrics.get('win_rates'):
+                            st.markdown("### 📈 Learning Curve")
+                            col1, col2, col3 = st.columns(3)
+
+                            with col1:
+                                first_wr = np.mean(metrics['win_rates'][:min(10, len(metrics['win_rates']))])
+                                st.metric("First 10 Dates Win Rate", f"{first_wr:.1f}%")
+
+                            with col2:
+                                last_wr = np.mean(metrics['win_rates'][-min(10, len(metrics['win_rates'])):])
+                                st.metric("Last 10 Dates Win Rate", f"{last_wr:.1f}%")
+
+                            with col3:
+                                improvement = last_wr - first_wr
+                                st.metric("Improvement", f"{improvement:+.1f}%", delta=f"{improvement:+.1f}%")
+
+                            # Plot learning curve
+                            learning_df = pd.DataFrame({
+                                'Date': metrics['dates'],
+                                'Win Rate': metrics['win_rates']
+                            })
+                            st.line_chart(learning_df.set_index('Date'))
+
+                        st.balloons()
+                    else:
+                        progress_container.warning("⚠️ No results from backtest")
+
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+                    with st.expander("Show Error Details"):
+                        st.exception(e)
+
+    elif backtest_mode == "Date Range":
         st.subheader("📅 Custom Date Range Backtest")
 
-    col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2)
 
-    with col1:
+        with col1:
         backtest_start = st.date_input(
             "Start Date",
             value=date.today() - timedelta(days=90),
