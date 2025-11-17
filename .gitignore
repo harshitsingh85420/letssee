@@ -46,3 +46,4 @@ stock_picker_data/
 # OS
 .DS_Store
 Thumbs.db
+hf_deploy/

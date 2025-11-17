@@ -1,0 +1,44 @@
+DEPLOY TO HUGGING FACE - SIMPLE STEPS
+=====================================
+
+After creating your Space on Hugging Face, you'll see a git URL like:
+https://huggingface.co/spaces/YOUR_USERNAME/stock-picker
+
+Follow these commands on your computer:
+
+# 1. Clone your empty Hugging Face Space
+git clone https://huggingface.co/spaces/YOUR_USERNAME/stock-picker
+cd stock-picker
+
+# 2. Copy all files from your project
+# (Navigate to your letssee folder and copy these files)
+
+REQUIRED FILES:
+- README.md (with Hugging Face YAML header)
+- app.py
+- requirements.txt
+- All *.py files (stock_picker.py, get_picks.py, etc.)
+
+# 3. Add and commit
+git add .
+git commit -m "Initial deployment"
+
+# 4. Push to Hugging Face
+git push
+
+DONE! Your app will build and deploy automatically!
+
+Your app will be live at:
+https://huggingface.co/spaces/YOUR_USERNAME/stock-picker
+
+=======================================
+EVEN SIMPLER: Use the Web Interface
+=======================================
+
+1. After creating Space, click "Files and versions" tab
+2. Click "Add file" dropdown
+3. Select "Upload files"
+4. Drag and drop ALL your .py files + README.md + requirements.txt
+5. Click "Commit changes to main"
+
+Done! App deploys automatically!
