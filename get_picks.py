@@ -66,6 +66,10 @@ def get_picks_for_date(signal_date: date, n_stocks: int = 200, show_outcomes: bo
         print("❌ No data available for this date range")
         return None
 
+    # Ensure DATE column is datetime64[ns] for all comparisons
+    bhav = bhav.copy()
+    bhav['DATE'] = pd.to_datetime(bhav['DATE'])
+
     print(f"✅ Fetched {len(bhav):,} rows | {bhav['SC_CODE'].nunique()} unique stocks")
 
     # Filter to stocks with enough history
