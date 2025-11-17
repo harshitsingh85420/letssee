@@ -92,15 +92,87 @@ def get_picks_for_date(signal_date: date, n_stocks: int = 200, show_outcomes: bo
 
     # Run the picker
     print("\n🔧 Computing features and training model...")
-    picks = picker.run(
-        bhav_train,
-        signal_date=signal_date,
-        use_all_data=False  # Only use data up to signal_date (no lookahead)
-    )
 
-    if picks is None or len(picks) == 0:
-        print("\n⚠️ No picks generated for this date")
+    # Import required functions
+    from momentum_features import prepare_features_all, add_forward_returns
+    import lightgbm as lgb
+
+    # Compute features
+    features = prepare_features_all(bhav_train)
+
+    # Add forward returns for training
+    features_with_labels = add_forward_returns(features, periods=[picker.FORWARD_PERIOD])
+
+    # Convert signal_date to pd.Timestamp for comparison
+    signal_date_ts = pd.Timestamp(signal_date)
+
+    # Prepare training data (only use data up to signal date - no lookahead!)
+    label_col = f"Label_fwd{picker.FORWARD_PERIOD}_positive"
+    df_train = features_with_labels[features_with_labels['DATE'] < signal_date_ts].copy()
+    df_train = df_train.dropna(subset=[label_col])
+    df_train = df_train.dropna(subset=picker.feature_cols)
+
+    if len(df_train) < 100:
+        print("⚠️  Not enough training data")
         return None
+
+    print(f"   Training samples: {len(df_train):,}")
+
+    # Train model
+    X_train = df_train[picker.feature_cols]
+    y_train = df_train[label_col]
+
+    params = {
+        'objective': 'binary',
+        'metric': 'auc',
+        'boosting_type': 'gbdt',
+        'num_leaves': 31,
+        'learning_rate': 0.05,
+        'feature_fraction': 0.8,
+        'verbose': -1,
+        'seed': 42
+    }
+
+    train_data = lgb.Dataset(X_train, label=y_train)
+    model = lgb.train(params, train_data, num_boost_round=200, callbacks=[lgb.log_evaluation(0)])
+
+    # Get predictions for signal date
+    df_signal = features_with_labels[features_with_labels['DATE'] == signal_date_ts].copy()
+
+    if df_signal.empty:
+        print(f"⚠️  No data available for {signal_date}")
+        return None
+
+    df_predict = df_signal.dropna(subset=picker.feature_cols).copy()
+    X_pred = df_predict[picker.feature_cols]
+
+    probabilities = model.predict(X_pred)
+
+    # Get picks above threshold
+    threshold = picker.INITIAL_THRESHOLD
+    picks_mask = probabilities >= threshold
+
+    # If no picks at initial threshold, lower it
+    while picks_mask.sum() == 0 and threshold >= picker.MIN_THRESHOLD:
+        threshold -= picker.THRESHOLD_STEP
+        picks_mask = probabilities >= threshold
+
+    if picks_mask.sum() == 0:
+        print("⚠️  No picks generated (all probabilities too low)")
+        return None
+
+    # Create picks DataFrame
+    picks = pd.DataFrame({
+        'SC_CODE': df_predict.loc[picks_mask, 'SC_CODE'].values,
+        'SC_NAME': df_predict.loc[picks_mask, 'SC_NAME'].values,
+        'Close': df_predict.loc[picks_mask, 'Close'].values,
+        'Probability': probabilities[picks_mask],
+        'Threshold': threshold
+    })
+
+    picks = picks.sort_values('Probability', ascending=False).reset_index(drop=True)
+
+    print(f"✅ Generated {len(picks)} picks @ threshold {threshold:.2f}")
 
     # Add actual outcomes if available and requested
     if show_outcomes:
